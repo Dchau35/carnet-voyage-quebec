@@ -977,11 +977,19 @@
   const CHEMIN_SECRET = "RSB_Bishop";
 
   let refCarnet = null;
+  let refDecouvertes = null;
+  let refTaches = null;
+  let refNotes = null;
+  let refGuidePerso = null;
   let firebasePret = false;
   if (firebaseConfig.apiKey !== "COLLER_ICI" && CHEMIN_SECRET !== "COLLER_ICI"){
     try {
       firebase.initializeApp(firebaseConfig);
       refCarnet = firebase.database().ref('carnets/' + CHEMIN_SECRET);
+      refDecouvertes = refCarnet.child('decouvertes');
+      refTaches = refCarnet.child('taches');
+      refNotes = refCarnet.child('notes');
+      refGuidePerso = refCarnet.child('guidePerso');
       firebasePret = true;
     } catch (err){
       console.error('Firebase non initialisé :', err);
@@ -992,8 +1000,20 @@
     return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
   }
 
-  function sauvegarderEtat(){
-    if (refCarnet) refCarnet.set({decouvertes, taches, notes, guidePerso});
+  // Sauvegarde/suppression ciblées : chaque élément vit sous sa propre clé Firebase
+  // (carnets/.../taches/<id>, etc.), pour qu'une modification sur un appareil ne
+  // puisse jamais écraser celle d'un autre appareil fait au même moment.
+  function sauvegarderItem(ref, item){
+    if (!ref) return;
+    const {id, ...reste} = item;
+    ref.child(String(id)).set(reste);
+  }
+  function supprimerItem(ref, id){
+    if (!ref) return;
+    ref.child(String(id)).remove();
+  }
+  function objetVersListe(obj){
+    return Object.keys(obj || {}).map(cle => ({...obj[cle], id: cle}));
   }
 
   /* ============ DONNÉES ============ */
@@ -1452,21 +1472,21 @@
     if (!target) return;
     const id = target.dataset.id;
     if (target.dataset.action === 'suppr'){
-      taches = taches.filter(t => t.id !== id);
+      taches = taches.filter(t => String(t.id) !== String(id));
       renderTodo();
       renderAgenda();
-      sauvegarderEtat();
+      supprimerItem(refTaches, id);
     }
   });
   document.getElementById('todo-groupes').addEventListener('change', (e) => {
     if (e.target.dataset.action === 'toggle'){
       const id = e.target.dataset.id;
-      const t = taches.find(t => t.id === id);
+      const t = taches.find(t => String(t.id) === String(id));
       if (t){
         t.fait = e.target.checked;
         renderTodo();
         renderAgenda();
-        sauvegarderEtat();
+        sauvegarderItem(refTaches, t);
       }
     }
   });
@@ -1498,10 +1518,11 @@
     const prioInput = formTache.querySelector('input[name=prio]:checked');
     const priorite = prioInput ? prioInput.value : 'moyenne';
     if (!texte || !groupe) return;
-    taches.push({id: genererUid(), texte, groupe, date, fait:false, priorite});
+    const nouvelleTache = {id: genererUid(), texte, groupe, date, fait:false, priorite};
+    taches.push(nouvelleTache);
     renderTodo();
     renderAgenda();
-    sauvegarderEtat();
+    sauvegarderItem(refTaches, nouvelleTache);
     closeModalTache();
   });
 
@@ -1538,7 +1559,7 @@
   function ouvrirModaleNote(id){
     formNote.reset();
     if (id){
-      const n = notes.find(n => n.id === id);
+      const n = notes.find(n => String(n.id) === String(id));
       noteEnEditionId = id;
       titreModalNote.textContent = 'Modifier la note';
       document.getElementById('n-texte').value = n.texte;
@@ -1560,10 +1581,10 @@
 
   btnDeleteNote.addEventListener('click', () => {
     if (noteEnEditionId){
-      notes = notes.filter(n => n.id !== noteEnEditionId);
+      notes = notes.filter(n => String(n.id) !== String(noteEnEditionId));
       renderNotes();
       renderAgenda();
-      sauvegarderEtat();
+      supprimerItem(refNotes, noteEnEditionId);
     }
     fermerModaleNote();
   });
@@ -1573,15 +1594,17 @@
     const texte = document.getElementById('n-texte').value.trim();
     const date = document.getElementById('n-date').value || null;
     if (!texte) return;
+    let noteAEcrire;
     if (noteEnEditionId){
-      const n = notes.find(n => n.id === noteEnEditionId);
-      if (n){ n.texte = texte; n.date = date; }
+      const n = notes.find(n => String(n.id) === String(noteEnEditionId));
+      if (n){ n.texte = texte; n.date = date; noteAEcrire = n; }
     } else {
-      notes.unshift({id: genererUid(), texte, date});
+      noteAEcrire = {id: genererUid(), texte, date};
+      notes.unshift(noteAEcrire);
     }
     renderNotes();
     renderAgenda();
-    sauvegarderEtat();
+    if (noteAEcrire) sauvegarderItem(refNotes, noteAEcrire);
     fermerModaleNote();
   });
 
@@ -1704,9 +1727,9 @@
 
   btnDeleteSource.addEventListener('click', () => {
     if (editingSourceId){
-      guidePerso = guidePerso.filter(s => s.id !== editingSourceId);
+      guidePerso = guidePerso.filter(s => String(s.id) !== String(editingSourceId));
       renderGuide();
-      sauvegarderEtat();
+      supprimerItem(refGuidePerso, editingSourceId);
     }
     fermerModaleSource();
   });
@@ -1714,7 +1737,7 @@
   document.getElementById('guide-grid').addEventListener('click', (e) => {
     const carte = e.target.closest('.guide-card[data-perso-id]');
     if (!carte || e.target.closest('a') || e.target.closest('button[data-titre]')) return;
-    const source = guidePerso.find(s => s.id === carte.dataset.persoId);
+    const source = guidePerso.find(s => String(s.id) === String(carte.dataset.persoId));
     if (source) ouvrirModaleSource(source);
   });
 
@@ -1736,14 +1759,16 @@
       perso: true
     };
 
+    let sourceAEcrire;
     if (editingSourceId){
-      const idx = guidePerso.findIndex(s => s.id === editingSourceId);
-      if (idx !== -1) guidePerso[idx] = {...guidePerso[idx], ...donnees};
+      const idx = guidePerso.findIndex(s => String(s.id) === String(editingSourceId));
+      if (idx !== -1){ guidePerso[idx] = {...guidePerso[idx], ...donnees}; sourceAEcrire = guidePerso[idx]; }
     } else {
-      guidePerso.push({id: genererUid(), ...donnees});
+      sourceAEcrire = {id: genererUid(), ...donnees};
+      guidePerso.push(sourceAEcrire);
     }
     renderGuide();
-    sauvegarderEtat();
+    if (sourceAEcrire) sauvegarderItem(refGuidePerso, sourceAEcrire);
     fermerModaleSource();
   });
 
@@ -2015,16 +2040,16 @@
   function closeModal(){ overlay.classList.remove('open'); }
 
   function ouvrirModaleDecouverteEdition(id){
-    const d = decouvertes.find(x => x.id === id);
+    const d = decouvertes.find(x => String(x.id) === String(id));
     if (d) openModal(d);
   }
 
   btnDeleteDecouverte.addEventListener('click', () => {
     if (editingDecouverteId){
-      decouvertes = decouvertes.filter(d => d.id !== editingDecouverteId);
+      decouvertes = decouvertes.filter(d => String(d.id) !== String(editingDecouverteId));
       renderDecouvertes();
       renderAgenda();
-      sauvegarderEtat();
+      supprimerItem(refDecouvertes, editingDecouverteId);
     }
     closeModal();
   });
@@ -2070,40 +2095,55 @@
       adresse: currentAdresse,
       coords: currentCoords
     };
+    let decouverteAEcrire;
     if (editingDecouverteId){
-      const idx = decouvertes.findIndex(d => d.id === editingDecouverteId);
-      if (idx !== -1) decouvertes[idx] = {...decouvertes[idx], ...donnees};
+      const idx = decouvertes.findIndex(d => String(d.id) === String(editingDecouverteId));
+      if (idx !== -1){ decouvertes[idx] = {...decouvertes[idx], ...donnees}; decouverteAEcrire = decouvertes[idx]; }
     } else {
-      decouvertes.push({id: genererUid(), ...donnees});
+      decouverteAEcrire = {id: genererUid(), ...donnees};
+      decouvertes.push(decouverteAEcrire);
     }
     renderDecouvertes();
     renderAgenda();
-    sauvegarderEtat();
+    if (decouverteAEcrire) sauvegarderItem(refDecouvertes, decouverteAEcrire);
     closeModal();
   });
 
   /* ============ ECOUTE DES MISES A JOUR DISTANTES ============ */
 
   function ecouterMisesAJour(){
-    if (!refCarnet) return;
-    refCarnet.on('value', (snapshot) => {
-      const data = snapshot.val();
-      if (!data){
-        // rien en ligne pour l'instant : on pousse l'état local de départ
-        sauvegarderEtat();
-        return;
-      }
-      decouvertes = data.decouvertes || [];
-      taches = data.taches || [];
-      notes = data.notes || [];
-      guidePerso = data.guidePerso || [];
+    if (!firebasePret) return;
+
+    refDecouvertes.on('value', (snapshot) => {
+      decouvertes = objetVersListe(snapshot.val());
       renderDecouvertes();
       renderAgenda();
-      renderTodo();
-      renderNotes();
-      renderGuide();
       const panelCarte = document.getElementById('panel-carte');
       if (panelCarte && panelCarte.classList.contains('active')) renderCarte();
+    });
+
+    refTaches.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data === null){
+        // rien en ligne pour l'instant : on pousse les tâches de départ définies dans le code,
+        // chacune sous sa propre clé (la mise à jour de l'affichage suivra via ce même écouteur).
+        taches.forEach(t => sauvegarderItem(refTaches, t));
+        return;
+      }
+      taches = objetVersListe(data);
+      renderTodo();
+      renderAgenda();
+    });
+
+    refNotes.on('value', (snapshot) => {
+      notes = objetVersListe(snapshot.val()).sort((a, b) => String(b.id).localeCompare(String(a.id)));
+      renderNotes();
+      renderAgenda();
+    });
+
+    refGuidePerso.on('value', (snapshot) => {
+      guidePerso = objetVersListe(snapshot.val());
+      renderGuide();
     });
   }
 
