@@ -1,0 +1,1884 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carnet de voyage - Québec 2026 (maquette)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --fleuve:#003399;       /* bleu officiel du drapeau du Québec (PMS 293) */
+    --fleuve-clair:#0A4BC2;
+    --fleuve-fonce:#00204D;
+    --or:#C89B3C;           /* accent chaleureux, clin d'oeil aux lys dorés du Carillon */
+    --papier:#F2F4F8;
+    --papier-fonce:#DCE2EC;
+    --blanc:#FFFFFF;
+    --sapin:#2E6B5E;
+    --encre:#1B2530;
+    --rouge-stamp:#A13D2E;
+
+    /* couleurs d'étape - distinctes des couleurs de catégorie */
+    --etape-mtl:#2F5D8A;
+    --etape-mau:#3E8361;
+    --etape-que:#B03A2E;
+    --etape-she:#6C4E9C;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--fleuve);
+    color:var(--encre);
+    font-family:'Source Sans 3', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .display{font-family:'Fraunces', serif;}
+  .mono{font-family:'JetBrains Mono', monospace;}
+
+  /* ---- Layout général ---- */
+  .app{
+    max-width:1180px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--papier);
+    background-image:
+      radial-gradient(circle at 100% 0%, rgba(255,255,255,0.15), transparent 40%);
+    box-shadow:0 0 60px rgba(0,0,0,0.35);
+    position:relative;
+  }
+
+  header.top{
+    background:var(--fleuve);
+    color:var(--papier);
+    padding:28px 32px 22px;
+    position:relative;
+    overflow:hidden;
+  }
+  header.top::after{
+    content:"";
+    position:absolute;
+    right:-40px; top:-40px;
+    width:180px; height:180px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(201,123,46,0.35), transparent 70%);
+  }
+  .fleur-lys{
+    position:absolute;
+    right:20px; top:8px;
+    font-size:44px;
+    line-height:1;
+    color:rgba(255,255,255,0.55);
+    z-index:1;
+  }
+  header.top h1{
+    margin:0 0 4px;
+    font-size:1.9rem;
+    font-weight:600;
+    letter-spacing:0.3px;
+  }
+  header.top .sub{
+    font-size:0.85rem;
+    opacity:0.75;
+    font-family:'JetBrains Mono', monospace;
+    letter-spacing:0.5px;
+  }
+  .sync-status{
+    font-size:0.72rem;
+    font-family:'JetBrains Mono', monospace;
+    margin-top:6px;
+    color:#e0b0a8;
+  }
+  .sync-status.actif{color:#a8e0c0;}
+
+  nav.tabs{
+    display:flex;
+    justify-content:space-between;
+    background:var(--fleuve-clair);
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.tabs button{
+    appearance:none;
+    border:none;
+    background:transparent;
+    color:rgba(242,244,248,0.55);
+    flex:1 1 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:13px 6px;
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+    transition:all .15s ease;
+  }
+  nav.tabs button svg{
+    width:22px; height:22px;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.7;
+  }
+  nav.tabs button:hover{color:var(--papier);}
+  nav.tabs button.active{
+    color:var(--papier);
+    border-bottom-color:var(--or);
+    background:rgba(0,0,0,0.12);
+  }
+  nav.tabs button.active svg{stroke-width:1.9;}
+
+  main{padding:26px 32px 60px;}
+  .panel{display:none;}
+  .panel.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  h2.section-title{
+    font-size:1.3rem;
+    margin:0 0 18px;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .section-header-row{
+    position:relative;
+    padding-right:120px;
+  }
+  .section-header-row .btn-primary{
+    position:absolute;
+    top:0; right:0;
+  }
+  .section-eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    color:var(--or);
+    font-weight:600;
+  }
+  .section-desc{
+    font-size:0.88rem;
+    color:#5b5648;
+    margin:0 0 22px;
+  }
+
+  /* ---- Calendrier : légende des étapes ---- */
+  .legende-etapes{
+    display:flex; gap:14px; flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .legende-item{
+    display:flex; align-items:center; gap:6px;
+    font-size:0.76rem; font-weight:600; color:#5b5648;
+  }
+  .legende-pastille{width:11px; height:11px; border-radius:3px; display:inline-block;}
+
+  /* ---- Calendrier : agenda jour par jour ---- */
+  .agenda{display:flex; flex-direction:column; gap:10px;}
+  .jour-row{
+    display:flex;
+    background:#fff;
+    border:1px solid var(--papier-fonce);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .jour-bande{width:6px; flex-shrink:0;}
+  .jour-corps{padding:12px 16px; flex:1; min-width:0;}
+  .jour-entete{
+    display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+    margin-bottom:6px;
+  }
+  .jour-date{font-weight:700; font-size:0.95rem;}
+  .jour-etape-tag{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.66rem; font-weight:600;
+    padding:2px 8px; border-radius:999px;
+    color:#fff;
+  }
+  .jour-items{display:flex; flex-direction:column; gap:6px;}
+  .jour-item{
+    display:flex; align-items:flex-start; gap:8px;
+    font-size:0.83rem; color:var(--encre);
+  }
+  .jour-item .icone{
+    width:18px; height:18px; flex-shrink:0; margin-top:1px;
+  }
+  .jour-item .icone svg{width:100%; height:100%; fill:none; stroke-width:1.8;}
+  .jour-item.logistique{color:#5b5648;}
+  .jour-item .heure{
+    font-family:'JetBrains Mono', monospace; font-size:0.72rem;
+    color:#8a8574; margin-right:2px;
+  }
+  .jour-vide{font-size:0.78rem; color:#b3ac9a; font-style:italic;}
+
+  /* ---- Découvertes ---- */
+  .filters-wrap{position:relative; margin-bottom:10px;}
+  .filters-wrap::after{
+    content:"";
+    position:absolute; right:0; top:0; bottom:2px; width:24px;
+    background:linear-gradient(to right, transparent, var(--papier));
+    pointer-events:none;
+  }
+  .filters{
+    display:flex; gap:6px; flex-wrap:nowrap;
+    overflow-x:auto; padding-bottom:2px; scrollbar-width:thin;
+  }
+  .filters .chip{flex:0 0 auto;}
+  .filters-wrap-libre::after{display:none;}
+  .filters-wrap-libre .filters{
+    flex-wrap:wrap;
+    overflow-x:visible;
+  }
+  .chip{
+    font-size:0.72rem;
+    font-weight:600;
+    padding:6px 11px;
+    border-radius:999px;
+    border:1px solid var(--papier-fonce);
+    background:#fff;
+    cursor:pointer;
+    color:#5b5648;
+  }
+  .chip[data-active="true"]{
+    background:var(--sapin);
+    border-color:var(--sapin);
+    color:#fff;
+  }
+  .filters-icones{align-items:center;}
+  .filtre-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.68rem; font-weight:600; text-transform:uppercase;
+    letter-spacing:0.5px; color:#8a8574; margin-bottom:6px;
+  }
+  .chip-icone{
+    width:34px; height:34px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    flex:0 0 auto;
+  }
+  .chip-icone svg{width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.9;}
+  .chip-icone[data-cat="Activité"]{color:var(--fleuve-clair);}
+  .chip-icone[data-cat="Visite"]{color:var(--rouge-stamp);}
+  .chip-icone[data-cat="Rando"]{color:var(--sapin);}
+  .chip-icone[data-cat="A table"]{color:var(--or);}
+  .chip-icone[data-active="true"]{color:#fff;}
+
+  .tri-row{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    margin-bottom:18px; font-size:0.78rem; color:#8a8574;
+  }
+  .tri-row .tri-btn{
+    font-size:0.74rem; font-weight:600; padding:5px 10px;
+    border-radius:7px; border:1px solid var(--papier-fonce);
+    background:#fff; color:#5b5648; cursor:pointer;
+  }
+  .tri-row .tri-btn[data-active="true"]{
+    background:var(--fleuve); border-color:var(--fleuve); color:#fff;
+  }
+  .decouvertes-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(250px, 1fr));
+    gap:16px;
+  }
+  .carte-decouverte{
+    background:#fff;
+    border:1px solid var(--papier-fonce);
+    border-left:4px solid var(--papier-fonce);
+    border-radius:10px;
+    padding:16px;
+    position:relative;
+    cursor:pointer;
+  }
+  .carte-decouverte:hover{box-shadow:0 2px 8px rgba(0,0,0,0.08);}
+  .stamp{
+    position:absolute;
+    top:12px; right:12px;
+    width:46px; height:46px;
+    border-radius:50%;
+    border:2px dashed var(--rouge-stamp);
+    color:var(--rouge-stamp);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.6rem;
+    font-weight:600;
+    text-align:center;
+    transform:rotate(-8deg);
+    line-height:1.1;
+  }
+  .cat-badge{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:0.68rem;
+    font-family:'JetBrains Mono', monospace;
+    padding:3px 9px 3px 6px;
+    border-radius:5px;
+    color:#fff;
+    margin-bottom:8px;
+  }
+  .cat-badge svg{width:12px; height:12px; fill:none; stroke:#fff; stroke-width:2;}
+  .cat-randonnee{background:var(--sapin);}
+  .cat-gastronomie{background:var(--or);}
+  .cat-activite{background:var(--fleuve-clair);}
+  .cat-visite{background:var(--rouge-stamp);}
+  .carte-decouverte h4{margin:0 0 4px; font-size:1rem; padding-right:40px;}
+  .carte-decouverte .meta{
+    font-size:0.74rem; color:#8a8574;
+    margin-bottom:3px; display:flex; align-items:center; gap:5px; flex-wrap:wrap;
+  }
+  .carte-decouverte .meta .mono{font-family:'JetBrains Mono', monospace;}
+  .carte-decouverte .distance{
+    font-size:0.72rem; color:var(--sapin); font-weight:600; margin-bottom:8px;
+  }
+  .carte-decouverte p.note{margin:8px 0 10px; font-size:0.85rem; color:#5b5648;}
+  .carte-decouverte .liens{
+    display:flex; gap:12px; flex-wrap:wrap; margin-top:6px;
+  }
+  .carte-decouverte .liens a{
+    font-size:0.76rem; font-weight:600; color:var(--fleuve);
+    text-decoration:none; display:inline-flex; align-items:center; gap:4px;
+  }
+  .carte-decouverte .liens a:hover{text-decoration:underline;}
+  .carte-decouverte .liens svg{width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:2;}
+
+  .btn-primary{
+    border:none; background:var(--fleuve); color:#fff;
+    font-size:0.85rem; font-weight:600; padding:9px 16px;
+    border-radius:7px; cursor:pointer; white-space:nowrap;
+  }
+  .btn-primary:hover{background:var(--fleuve-clair);}
+
+  /* ---- Modale ajout découverte ---- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(11,20,32,0.55);
+    display:none; align-items:flex-start; justify-content:center;
+    padding:26px 14px; z-index:50; overflow-y:auto;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:var(--papier); border-radius:14px;
+    width:100%; max-width:520px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.3);
+    animation:fade .2s ease;
+  }
+  .modal-head{
+    background:var(--fleuve); color:#fff;
+    padding:16px 20px; border-radius:14px 14px 0 0;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .modal-head h3{margin:0; font-size:1.05rem;}
+  .modal-close{
+    background:none; border:none; color:#fff; font-size:1.3rem;
+    cursor:pointer; line-height:1; opacity:0.8;
+  }
+  .modal-close:hover{opacity:1;}
+  .modal-body{padding:18px 20px 20px;}
+  .field{margin-bottom:15px;}
+  .field-row{display:flex; gap:12px;}
+  .field-row .field{flex:1;}
+  .field label{
+    display:block; font-size:0.78rem; font-weight:600;
+    color:var(--fleuve); margin-bottom:5px;
+  }
+  .field input[type=text], .field input[type=date], .field input[type=time],
+  .field input[type=number], .field input[type=url], .field textarea{
+    width:100%; border:1px solid var(--papier-fonce); border-radius:7px;
+    padding:9px 11px; font-family:'Source Sans 3', sans-serif; font-size:0.88rem;
+    background:#fff; color:var(--encre);
+  }
+  .field textarea{resize:vertical; min-height:64px;}
+  .field-hint{font-size:0.7rem; color:#8a8574; margin-top:4px;}
+  .cat-choice{
+    display:flex; gap:8px; flex-wrap:nowrap;
+  }
+  .cat-choice label{
+    display:flex; align-items:center; justify-content:center;
+    width:42px; height:42px; flex:0 0 auto;
+    border:1px solid var(--papier-fonce); border-radius:50%;
+    cursor:pointer; background:#fff;
+  }
+  .cat-choice input{display:none;}
+  .cat-choice svg{width:19px; height:19px; fill:none; stroke-width:1.8;}
+  .cat-choice label[data-cat="Activité"] svg{stroke:var(--fleuve-clair);}
+  .cat-choice label[data-cat="Visite"] svg{stroke:var(--rouge-stamp);}
+  .cat-choice label[data-cat="Rando"] svg{stroke:var(--sapin);}
+  .cat-choice label[data-cat="A table"] svg{stroke:var(--or);}
+  .cat-choice label.selected svg{stroke:#fff;}
+  .cat-choice label.selected{
+    background:var(--fleuve); border-color:var(--fleuve); color:#fff;
+  }
+
+  .prio-choice{display:flex; gap:8px; flex-wrap:nowrap;}
+  .prio-choice label{
+    display:flex; align-items:center; gap:6px; flex:1;
+    justify-content:center;
+    font-size:0.8rem; font-weight:600; color:#5b5648;
+    border:1px solid var(--papier-fonce); border-radius:999px;
+    padding:8px 10px; cursor:pointer; background:#fff;
+  }
+  .prio-choice label::before{
+    content:""; width:9px; height:9px; border-radius:50%; display:inline-block;
+  }
+  .prio-choice label[data-prio="haute"]::before{background:var(--rouge-stamp);}
+  .prio-choice label[data-prio="moyenne"]::before{background:var(--or);}
+  .prio-choice label[data-prio="basse"]::before{background:var(--sapin);}
+  .prio-choice input{display:none;}
+  .prio-choice label.selected{
+    background:var(--fleuve); border-color:var(--fleuve); color:#fff;
+  }
+  .loc-search{display:flex; gap:8px;}
+  .loc-search input{
+    flex:1; border:1px solid var(--papier-fonce); border-radius:7px;
+    padding:9px 11px; font-family:'Source Sans 3', sans-serif; font-size:0.88rem;
+    background:#fff; color:var(--encre);
+  }
+  .loc-search .btn-secondary{padding:9px 14px; white-space:nowrap;}
+  .loc-results{margin-top:6px;}
+  .loc-results:empty{margin-top:0;}
+  .loc-result-item{
+    background:#fff; border:1px solid var(--papier-fonce);
+    border-top:none; padding:8px 11px; font-size:0.82rem;
+    cursor:pointer;
+  }
+  .loc-result-item:first-child{border-top:1px solid var(--papier-fonce); border-radius:7px 7px 0 0;}
+  .loc-result-item:last-child{border-radius:0 0 7px 7px;}
+  .loc-result-item:hover{background:var(--papier);}
+  .loc-result-item .nom{font-weight:600; color:var(--fleuve); display:block;}
+  .loc-result-item .adresse{color:#8a8574; font-size:0.76rem;}
+  .loc-status{
+    font-size:0.78rem; color:#8a8574; margin-bottom:8px;
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  }
+  .loc-status .coords{font-family:'JetBrains Mono', monospace; color:var(--sapin);}
+  #loc-map{
+    height:200px; border-radius:9px; overflow:hidden;
+    border:1px solid var(--papier-fonce);
+  }
+  .loc-hint{font-size:0.72rem; color:#8a8574; margin-top:6px; font-style:italic;}
+  .modal-actions{
+    display:flex; justify-content:flex-end; gap:10px; margin-top:18px;
+  }
+  .btn-secondary{
+    border:1px solid var(--papier-fonce); background:#fff; color:#5b5648;
+    font-size:0.85rem; font-weight:600; padding:9px 16px;
+    border-radius:7px; cursor:pointer;
+  }
+
+  /* ---- Todo ---- */
+  .todo-groupe{margin-bottom:22px;}
+  .todo-groupe h3{
+    font-size:0.95rem; margin:0 0 10px;
+    color:var(--fleuve);
+    border-bottom:1px solid var(--papier-fonce);
+    padding-bottom:6px;
+  }
+  .todo-item{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 4px;
+    font-size:0.9rem;
+    border-bottom:1px solid #efe8d6;
+  }
+  .todo-item input[type=checkbox]{width:17px; height:17px; accent-color:var(--sapin); flex-shrink:0;}
+  .todo-item .todo-prio{
+    width:9px; height:9px; border-radius:50%; flex-shrink:0; display:inline-block;
+  }
+  .todo-item .todo-texte{flex:1; min-width:0;}
+  .todo-item.done .todo-texte{text-decoration:line-through; color:#a39d8a;}
+  .todo-item .todo-date{
+    font-family:'JetBrains Mono', monospace; font-size:0.68rem;
+    color:var(--sapin); background:var(--papier); padding:2px 7px;
+    border-radius:999px; flex-shrink:0; white-space:nowrap;
+  }
+  .todo-item .todo-suppr{
+    border:none; background:none; color:#b3ac9a; cursor:pointer;
+    font-size:1rem; line-height:1; padding:2px 4px; flex-shrink:0;
+  }
+  .todo-item .todo-suppr:hover{color:var(--rouge-stamp);}
+  .todo-vide{font-size:0.85rem; color:#8a8574; font-style:italic;}
+
+  /* ---- Notes ---- */
+  .notes-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .note-card{
+    background:#FFF9E9;
+    border:1px solid var(--papier-fonce);
+    border-radius:8px;
+    padding:14px 16px;
+    font-size:0.87rem;
+    box-shadow:2px 3px 0 rgba(0,0,0,0.04);
+    cursor:pointer;
+  }
+  .note-card:hover{box-shadow:2px 3px 0 rgba(0,0,0,0.08);}
+  .note-card .note-date{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.68rem; color:var(--or); margin-bottom:6px; display:block;
+  }
+  .note-card .note-texte{white-space:pre-wrap;}
+
+  /* ---- Carte ---- */
+  #carte-leaflet{
+    width:100%;
+    border-radius:12px;
+    height:440px;
+    border:1px solid var(--papier-fonce);
+  }
+  .map-note{
+    font-size:0.78rem; color:#8a8574; margin-top:10px; font-style:italic;
+  }
+  .marqueur-decouverte{
+    background:#fff; border-radius:50%;
+    width:30px; height:30px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 6px rgba(0,0,0,0.35);
+  }
+  .marqueur-decouverte svg{width:17px; height:17px; fill:none; stroke-width:2;}
+  .popup-decouverte h4{margin:0 0 4px; font-size:0.95rem;}
+  .popup-decouverte .meta{font-size:0.72rem; color:#8a8574; margin-bottom:6px;}
+  .popup-decouverte p{margin:0 0 6px; font-size:0.83rem; color:#5b5648; word-wrap:break-word;}
+  .popup-decouverte a{font-size:0.78rem; color:var(--fleuve); font-weight:600; text-decoration:none;}
+  .popup-decouverte a:hover{text-decoration:underline;}
+  .leaflet-popup-content{margin:11px 14px; line-height:1.4;}
+  .leaflet-popup-content-wrapper{border-radius:10px;}
+  @media (max-width:400px){
+    .leaflet-popup-content{margin:9px 11px;}
+  }
+
+  /* ---- Guide ---- */
+  .guide-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(260px,1fr));
+    gap:16px;
+  }
+  .guide-card{
+    background:#fff; border:1px solid var(--papier-fonce); border-radius:10px;
+    padding:16px;
+  }
+  .guide-card .guide-tags{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;}
+  .guide-card .guide-tag{
+    font-size:0.66rem; font-family:'JetBrains Mono', monospace; font-weight:600;
+    padding:2px 8px; border-radius:999px; color:#fff;
+  }
+  .guide-card h4{margin:0 0 6px; font-size:0.98rem;}
+  .guide-card p{margin:0 0 10px; font-size:0.83rem; color:#5b5648;}
+  .guide-card .guide-actions{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .guide-card .guide-lien{
+    font-size:0.78rem; font-weight:600; color:var(--fleuve);
+    text-decoration:none; display:inline-flex; align-items:center; gap:4px;
+  }
+  .guide-card .guide-lien:hover{text-decoration:underline;}
+  .guide-card .guide-lien svg{width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:2;}
+  .guide-card button{
+    border:none; background:var(--sapin); color:#fff;
+    font-size:0.78rem; font-weight:600; padding:7px 12px;
+    border-radius:6px; cursor:pointer; white-space:nowrap;
+  }
+
+  @media (max-width:640px){
+    header.top{padding:20px 18px 16px;}
+    main{padding:18px 16px 50px;}
+    .notes-grid{grid-template-columns:1fr;}
+    .section-header-row{padding-right:100px;}
+    .section-header-row .btn-primary{font-size:0.78rem; padding:8px 12px;}
+    .field-row{flex-direction:column; gap:0;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="fleur-lys" aria-hidden="true">⚜</div>
+    <h1 class="display">Carnet de voyage</h1>
+    <div class="sub">QUÉBEC · 24 AOÛT → 9 SEPTEMBRE 2026 · MAQUETTE, DONNÉES FICTIVES</div>
+    <div class="sync-status" id="sync-status">● Synchronisation désactivée</div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-panel="calendrier" class="active" title="Calendrier" aria-label="Calendrier">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke-linecap="round"/><circle cx="8" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="14" r="1.2" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button data-panel="decouvertes" title="Découvertes" aria-label="Découvertes">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 5.2 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.8-3-7-7-7z"/><circle cx="12" cy="9" r="2.4"/></svg>
+    </button>
+    <button data-panel="todo" title="À faire" aria-label="À faire">
+      <svg viewBox="0 0 24 24">
+        <rect x="3.5" y="4" width="4" height="4" rx="0.8"/>
+        <path d="M4.5 6l1 1 1.8-1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M10.5 6h10" stroke-linecap="round"/>
+        <rect x="3.5" y="14" width="4" height="4" rx="0.8"/>
+        <path d="M10.5 16h10" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <button data-panel="notes" title="Bloc-notes" aria-label="Bloc-notes">
+      <svg viewBox="0 0 24 24">
+        <path d="M4 20.2l1-4.4L15.6 5.2a1.3 1.3 0 0 1 1.9 0l1.3 1.3a1.3 1.3 0 0 1 0 1.9L8.2 19l-4.2 1.2z" stroke-linejoin="round"/>
+        <path d="M14.3 7.1l2.6 2.6" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <button data-panel="carte" title="Carte" aria-label="Carte">
+      <svg viewBox="0 0 24 24"><path d="M9 4L3 6.5v14L9 18m0-14l6 2m-6-2v14m6-12l6-2.5v14L15 18m0-14v14" stroke-linejoin="round"/></svg>
+    </button>
+    <button data-panel="guide" title="Guide" aria-label="Guide">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6.5l2.3 5.5-2.3 5.5-2.3-5.5z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="var(--fleuve)" stroke="none"/></svg>
+    </button>
+  </nav>
+
+  <main>
+
+    <!-- CALENDRIER -->
+    <section class="panel active" id="panel-calendrier">
+      <span class="section-eyebrow">Jour par jour</span>
+      <h2 class="section-title">Calendrier</h2>
+
+      <div class="legende-etapes" id="legende-etapes"></div>
+      <div class="agenda" id="agenda"></div>
+    </section>
+
+    <!-- DECOUVERTES -->
+    <section class="panel" id="panel-decouvertes">
+      <div class="section-header-row">
+        <div>
+          <span class="section-eyebrow">Ce que nous avons retenu</span>
+          <h2 class="section-title">Découvertes</h2>
+        </div>
+        <button class="btn-primary" id="btn-open-modal">+ Ajouter</button>
+      </div>
+
+      <div class="filters-wrap filters-wrap-libre">
+        <div class="filters filters-icones" id="filters">
+          <button class="chip" data-active="true" data-cat="Toutes">Toutes</button>
+          <button class="chip chip-icone" data-cat="Activité" title="Activité" aria-label="Activité"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></button>
+          <button class="chip chip-icone" data-cat="Visite" title="Visite" aria-label="Visite"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6"/></svg></button>
+          <button class="chip chip-icone" data-cat="Rando" title="Rando" aria-label="Rando"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l5-11 3 6 2-4 6 9z"/></svg></button>
+          <button class="chip chip-icone" data-cat="A table" title="A table" aria-label="A table"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9h10a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a1 1 0 0 1 1-1z"/><path d="M6 12h11"/><path d="M17 11h1.5a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H17"/></svg></button>
+        </div>
+      </div>
+
+      <div class="tri-row">
+        <span>Trier par :</span>
+        <button class="tri-btn" data-tri="jour" data-active="true">Jour</button>
+        <button class="tri-btn" data-tri="etape">Étape</button>
+        <button class="tri-btn" data-tri="categorie">Catégorie</button>
+      </div>
+
+      <div class="decouvertes-grid" id="decouvertes-grid"></div>
+    </section>
+
+    <!-- TODO -->
+    <section class="panel" id="panel-todo">
+      <div class="section-header-row">
+        <div>
+          <span class="section-eyebrow">Pense-bête</span>
+          <h2 class="section-title">À faire</h2>
+        </div>
+        <button class="btn-primary" id="btn-open-modal-tache">+ Ajouter</button>
+      </div>
+
+      <div id="todo-groupes"></div>
+    </section>
+
+    <!-- NOTES -->
+    <section class="panel" id="panel-notes">
+      <div class="section-header-row">
+        <div>
+          <span class="section-eyebrow">Espace libre</span>
+          <h2 class="section-title">Bloc-notes</h2>
+        </div>
+        <button class="btn-primary" id="btn-add-note">+ Ajouter</button>
+      </div>
+      <div class="notes-grid" id="notes-grid"></div>
+    </section>
+
+    <!-- CARTE -->
+    <section class="panel" id="panel-carte">
+      <span class="section-eyebrow">Vue d'ensemble</span>
+      <h2 class="section-title">Carte des découvertes</h2>
+
+      <div class="filters-wrap filters-wrap-libre">
+        <div class="filters filters-icones" id="filters-carte">
+          <button class="chip" data-active="true" data-cat="Toutes">Toutes</button>
+          <button class="chip chip-icone" data-cat="Activité" title="Activité" aria-label="Activité"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></button>
+          <button class="chip chip-icone" data-cat="Visite" title="Visite" aria-label="Visite"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6"/></svg></button>
+          <button class="chip chip-icone" data-cat="Rando" title="Rando" aria-label="Rando"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l5-11 3 6 2-4 6 9z"/></svg></button>
+          <button class="chip chip-icone" data-cat="A table" title="A table" aria-label="A table"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9h10a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a1 1 0 0 1 1-1z"/><path d="M6 12h11"/><path d="M17 11h1.5a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H17"/></svg></button>
+        </div>
+      </div>
+
+      <div id="carte-leaflet"></div>
+      <p class="map-note" id="carte-note">Les tuiles de carte nécessitent une connexion internet ; le reste de l'application fonctionne hors ligne.</p>
+    </section>
+
+    <!-- GUIDE -->
+    <section class="panel" id="panel-guide">
+      <span class="section-eyebrow">Annuaire de référence</span>
+      <h2 class="section-title">Guide</h2>
+
+      <div class="filtre-label">Étape</div>
+      <div class="filters-wrap filters-wrap-libre">
+        <div class="filters" id="filters-guide-etape">
+          <button class="chip" data-active="true" data-etape="toutes">Toutes</button>
+          <button class="chip" data-etape="mtl">Montréal</button>
+          <button class="chip" data-etape="mau">Mauricie</button>
+          <button class="chip" data-etape="que">Québec</button>
+          <button class="chip" data-etape="she">Sherbrooke</button>
+        </div>
+      </div>
+      <div class="filtre-label">Découvertes</div>
+      <div class="filters-wrap filters-wrap-libre">
+        <div class="filters filters-icones" id="filters-guide-cat">
+          <button class="chip" data-active="true" data-cat="Toutes">Toutes</button>
+          <button class="chip chip-icone" data-cat="Activité" title="Activité" aria-label="Activité"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></button>
+          <button class="chip chip-icone" data-cat="Visite" title="Visite" aria-label="Visite"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6"/></svg></button>
+          <button class="chip chip-icone" data-cat="Rando" title="Rando" aria-label="Rando"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l5-11 3 6 2-4 6 9z"/></svg></button>
+          <button class="chip chip-icone" data-cat="A table" title="A table" aria-label="A table"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9h10a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a1 1 0 0 1 1-1z"/><path d="M6 12h11"/><path d="M17 11h1.5a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H17"/></svg></button>
+        </div>
+      </div>
+
+      <div class="guide-grid" id="guide-grid"></div>
+    </section>
+
+  </main>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 class="display" id="titre-modal-decouverte">Nouvelle découverte</h3>
+      <button class="modal-close" id="btn-close-modal" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-decouverte">
+        <div class="field">
+          <label for="f-titre">Titre</label>
+          <input type="text" id="f-titre" placeholder="Ex : Marché Jean-Talon" required>
+        </div>
+
+        <div class="field">
+          <label>Catégorie</label>
+          <div class="cat-choice" id="cat-choice">
+            <label data-cat="Activité" title="Activité" aria-label="Activité"><input type="radio" name="cat" value="Activité"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></label>
+            <label data-cat="Visite" title="Visite" aria-label="Visite"><input type="radio" name="cat" value="Visite"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6"/></svg></label>
+            <label data-cat="Rando" title="Rando" aria-label="Rando"><input type="radio" name="cat" value="Rando"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l5-11 3 6 2-4 6 9z"/></svg></label>
+            <label data-cat="A table" title="A table" aria-label="A table"><input type="radio" name="cat" value="A table"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9h10a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a1 1 0 0 1 1-1z"/><path d="M6 12h11"/><path d="M17 11h1.5a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H17"/></svg></label>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="f-date">Date</label>
+            <input type="date" id="f-date">
+          </div>
+          <div class="field">
+            <label for="f-heure">Heure</label>
+            <input type="time" id="f-heure">
+          </div>
+          <div class="field">
+            <label for="f-duree">Durée (min)</label>
+            <input type="number" id="f-duree" min="0" step="15" placeholder="60">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f-url">Lien internet (site, avis, réservation...)</label>
+          <input type="url" id="f-url" placeholder="https://...">
+        </div>
+
+        <div class="field">
+          <label for="f-note">Note</label>
+          <textarea id="f-note" placeholder="Quelques mots sur cette découverte..."></textarea>
+        </div>
+
+        <div class="field">
+          <label for="f-recherche-lieu">Localisation - rechercher un lieu</label>
+          <div class="loc-search">
+            <input type="text" id="f-recherche-lieu" placeholder="Ex : Marché Jean-Talon, Montréal">
+            <button type="button" class="btn-secondary" id="btn-search-lieu">Rechercher</button>
+          </div>
+          <div id="loc-results" class="loc-results"></div>
+        </div>
+
+        <div class="field">
+          <label>Position sur la carte</label>
+          <div class="loc-status" id="loc-status">Recherchez un lieu, ou placez le repère directement sur la carte.</div>
+          <div id="loc-map"></div>
+          <div class="loc-hint">Le repère peut être ajusté à la main : glissez-le ou cliquez ailleurs sur la carte. Un lien vers la carte sera généré automatiquement à partir de cette position.</div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="btn-delete-decouverte" style="margin-right:auto; display:none;">Supprimer</button>
+          <button type="button" class="btn-secondary" id="btn-cancel">Annuler</button>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay-tache">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 class="display">Nouvelle tâche</h3>
+      <button class="modal-close" id="btn-close-modal-tache" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-tache">
+        <div class="field">
+          <label for="t-texte">Tâche</label>
+          <input type="text" id="t-texte" placeholder="Ex : Réserver une table au restaurant" required>
+        </div>
+
+        <div class="field">
+          <label for="t-groupe">Groupe</label>
+          <input type="text" id="t-groupe" list="liste-groupes" placeholder="Ex : Avant le départ, Montréal..." required>
+          <datalist id="liste-groupes"></datalist>
+          <div class="field-hint">Un groupe existant, ou un nouveau nom pour en créer un.</div>
+        </div>
+
+        <div class="field">
+          <label>Priorité</label>
+          <div class="prio-choice" id="prio-choice">
+            <label data-prio="haute"><input type="radio" name="prio" value="haute">Haute</label>
+            <label data-prio="moyenne" class="selected"><input type="radio" name="prio" value="moyenne" checked>Moyenne</label>
+            <label data-prio="basse"><input type="radio" name="prio" value="basse">Basse</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="t-date">Date (facultatif)</label>
+          <input type="date" id="t-date">
+          <div class="field-hint">Si renseignée, la tâche apparaîtra aussi ce jour-là dans le calendrier.</div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="btn-cancel-tache">Annuler</button>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay-note">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 class="display" id="titre-modal-note">Nouvelle note</h3>
+      <button class="modal-close" id="btn-close-modal-note" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-note">
+        <div class="field">
+          <label for="n-texte">Note</label>
+          <textarea id="n-texte" placeholder="Écrivez votre note..." required></textarea>
+        </div>
+
+        <div class="field">
+          <label for="n-date">Date (facultatif)</label>
+          <input type="date" id="n-date">
+          <div class="field-hint">Si renseignée, la note apparaîtra aussi ce jour-là dans le calendrier.</div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="btn-delete-note" style="margin-right:auto; display:none;">Supprimer</button>
+          <button type="button" class="btn-secondary" id="btn-cancel-note">Annuler</button>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+  /* ============ SYNCHRONISATION PARTAGÉE (FIREBASE) ============ */
+  // Configuration Firebase du projet "carnet-quebec-2026" (base Realtime Database, région europe-west1).
+  const firebaseConfig = {
+    apiKey: "AIzaSyASXwdm_ic5wP4ewb6M_yF0cJcgNmp60FU",
+    authDomain: "carnet-quebec-2026.firebaseapp.com",
+    databaseURL: "https://carnet-quebec-2026-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "carnet-quebec-2026",
+    storageBucket: "carnet-quebec-2026.firebasestorage.app",
+    messagingSenderId: "828636661121",
+    appId: "1:828636661121:web:ad202f06bad7b8c41f1480"
+  };
+  const CHEMIN_SECRET = "RSB_Bishop";
+
+  let refCarnet = null;
+  let firebasePret = false;
+  if (firebaseConfig.apiKey !== "COLLER_ICI" && CHEMIN_SECRET !== "COLLER_ICI"){
+    try {
+      firebase.initializeApp(firebaseConfig);
+      refCarnet = firebase.database().ref('carnets/' + CHEMIN_SECRET);
+      firebasePret = true;
+    } catch (err){
+      console.error('Firebase non initialisé :', err);
+    }
+  }
+
+  function genererUid(){
+    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function sauvegarderEtat(){
+    if (refCarnet) refCarnet.set({decouvertes, taches, notes});
+  }
+
+  /* ============ DONNÉES ============ */
+
+  const STAGES = [
+    {id:'mtl', nom:'Montréal',  debut:'2026-08-24', fin:'2026-08-28', couleur:'var(--etape-mtl)', abrev:'MTL'},
+    {id:'mau', nom:'Mauricie',  debut:'2026-08-28', fin:'2026-08-31', couleur:'var(--etape-mau)', abrev:'MAU'},
+    {id:'que', nom:'Québec',    debut:'2026-08-31', fin:'2026-09-03', couleur:'var(--etape-que)', abrev:'QUE'},
+    {id:'she', nom:'Sherbrooke',debut:'2026-09-03', fin:'2026-09-09', couleur:'var(--etape-she)', abrev:'SHE'}
+  ];
+
+  const CATEGORIES = {
+    'Activité': {classe:'cat-activite', icone:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>'},
+    'Visite':   {classe:'cat-visite',   icone:'<path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6"/>'},
+    'Rando':    {classe:'cat-randonnee',icone:'<path d="M4 20l5-11 3 6 2-4 6 9z"/>'},
+    'A table':  {classe:'cat-gastronomie', icone:'<path d="M6 9h10a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a1 1 0 0 1 1-1z"/><path d="M6 12h11"/><path d="M17 11h1.5a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5H17"/>'}
+  };
+
+  const LOGISTIQUE_ICONES = {
+    vol:     '<path d="M2 16l20-7-3 9-6 1-3 5-2-8z"/>',
+    voiture: '<path d="M3 13l2-5a2 2 0 0 1 2-1h10a2 2 0 0 1 2 1l2 5"/><path d="M3 13h18v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="16.5" r="0.6" fill="currentColor"/><circle cx="16.5" cy="16.5" r="0.6" fill="currentColor"/>',
+    elias:   '<path d="M2 9l10-4 10 4-10 4z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>'
+  };
+
+  let logistiques = [
+    {date:'2026-08-24', heure:'11:15', titre:"Vol aller Nantes → Paris CDG → Montréal (arrivée 13h00)", type:'vol'},
+    {date:'2026-08-26', heure:'18:00', titre:'Prise en charge voiture Alamo (aéroport YUL)', type:'voiture'},
+    {date:'2026-09-03', heure:'',      titre:"International Welcome Day - Bishop's University", type:'elias'},
+    {date:'2026-09-04', heure:'matin', titre:"Moving Day - emménagement d'Elias", type:'elias'},
+    {date:'2026-09-09', heure:'',      titre:"Rentrée officielle des classes (Bishop's)", type:'elias'},
+    {date:'2026-09-09', heure:'12:00', titre:'Départ de Sherbrooke vers YUL (Fleur et David)', type:'voiture'},
+    {date:'2026-09-09', heure:'18:00', titre:'Restitution voiture Alamo (aéroport YUL)', type:'voiture'},
+    {date:'2026-09-09', heure:'21:00', titre:'Vol retour Montréal → Nantes', type:'vol'}
+  ];
+
+  let decouvertes = [
+    {id:'1', titre:'Marché Jean-Talon', cat:'A table', date:'2026-08-26', heure:'09:30', duree:90,
+     note:"Fromages québécois et bagels chauds. Prévoir le matin, moins de monde.",
+     adresse:'Marché Jean-Talon, Montréal, Québec, Canada', coords:[45.5359,-73.6142], url:''},
+    {id:'2', titre:'Sentier des Falaises', cat:'Rando', date:'2026-08-29', heure:'16:00', duree:120,
+     note:"Vue sur le lac, 2h de marche facile. Idéal fin d'après-midi.",
+     adresse:'Parc national de la Mauricie, Québec, Canada', coords:[46.6833,-72.9500], url:''},
+    {id:'3', titre:'Remparts du Vieux-Québec', cat:'Visite', date:'2026-09-01', heure:'19:00', duree:60,
+     note:"Promenade sur les fortifications, coucher de soleil sur le fleuve.",
+     adresse:'Remparts de Québec, Québec, Canada', coords:[46.8121,-71.2065], url:''},
+    {id:'4', titre:'Parc du Mont-Bellevue', cat:'Activité', date:'2026-09-05', heure:'12:30', duree:90,
+     note:"Tout près du campus Bishop's, bon spot pour un pique-nique avec Elias.",
+     adresse:'Parc du Mont-Bellevue, Sherbrooke, Québec, Canada', coords:[45.3892,-71.9080], url:''}
+  ];
+
+  let taches = [
+    {id:'1', texte:'Vérifier les passeports', groupe:'Avant le départ', date:null, fait:true, priorite:'haute'},
+    {id:'2', texte:'Confirmer la location Alamo', groupe:'Avant le départ', date:null, fait:true, priorite:'haute'},
+    {id:'3', texte:'Souscrire une assurance voyage', groupe:'Avant le départ', date:null, fait:false, priorite:'moyenne'},
+    {id:'4', texte:'Réserver une table au marché Jean-Talon', groupe:'Montréal', date:'2026-08-26', fait:false, priorite:'basse'},
+    {id:'5', texte:'Billets Biodôme', groupe:'Montréal', date:null, fait:false, priorite:'moyenne'},
+    {id:'6', texte:"Imprimer les documents d'inscription Bishop's", groupe:'Sherbrooke / Elias', date:null, fait:false, priorite:'haute'},
+    {id:'7', texte:'Prévoir des cartons pour l\'emménagement', groupe:'Sherbrooke / Elias', date:'2026-09-04', fait:false, priorite:'moyenne'}
+  ];
+  const PRIORITES = {
+    haute:   {label:'Haute',  couleur:'var(--rouge-stamp)'},
+    moyenne: {label:'Moyenne',couleur:'var(--or)'},
+    basse:   {label:'Basse',  couleur:'var(--sapin)'}
+  };
+  const ORDRE_PRIORITE = {haute:0, moyenne:1, basse:2};
+
+  let notes = [
+    {id:'1', texte:"Fleur préfère éviter les restaurants trop bruyants le soir, elle est fatiguée par le vol.", date:'2026-08-25'},
+    {id:'2', texte:"Penser à reprendre de l'essence avant de rendre la voiture à Montréal le 9.", date:'2026-08-30'},
+    {id:'3', texte:"Idée : refaire cette rando en fin de séjour si la météo est bonne côté Sherbrooke.", date:'2026-09-02'}
+  ];
+
+  // Annuaire de sites de référence réels (tourisme officiel, sentiers, musées, restaurants).
+  // etape: 'toutes' ou un id de STAGES. categorie: 'Toutes' ou une des 4 catégories de découvertes.
+  const guideAnnuaire = [
+    // --- Généraux (toutes étapes) ---
+    {titre:'Bonjour Québec', etape:'toutes', categorie:'Toutes', url:'https://www.bonjourquebec.com',
+     desc:"Site touristique officiel du gouvernement du Québec : toutes les régions, hébergements et activités."},
+    {titre:'Tourisme Montréal', etape:'mtl', categorie:'Toutes', url:'https://www.mtl.org',
+     desc:"Office de tourisme officiel de Montréal : quartiers, attraits, événements et bons plans."},
+    {titre:'Tourisme Mauricie', etape:'mau', categorie:'Toutes', url:'https://www.tourismemauricie.com',
+     desc:"Association touristique régionale de la Mauricie : nature, parcs, activités familiales et gourmandes."},
+    {titre:'Destination Québec cité', etape:'que', categorie:'Toutes', url:'https://www.quebec-cite.com',
+     desc:"Office de tourisme de Québec : incontournables du Vieux-Québec, patrimoine et suggestions de séjour."},
+    {titre:'Tourisme Cantons-de-l\'Est', etape:'she', categorie:'Toutes', url:'https://www.cantonsdelest.com',
+     desc:"Association touristique régionale couvrant Sherbrooke et les Cantons-de-l'Est : nature, gastronomie et culture."},
+
+    // --- Rando (nature, sentiers, parcs) ---
+    {titre:'Sépaq - Parcs nationaux', etape:'toutes', categorie:'Rando', url:'https://www.sepaq.com',
+     desc:"Gestionnaire des parcs nationaux du Québec : sentiers, plein air et hébergement en nature."},
+    {titre:'Rando Québec / Balise', etape:'toutes', categorie:'Rando', url:'https://www.randoquebec.ca',
+     desc:"Fédération québécoise de la randonnée pédestre ; son répertoire Balise recense des milliers de sentiers avec niveau de difficulté."},
+    {titre:'Aventure Écotourisme Québec', etape:'toutes', categorie:'Rando', url:'https://www.aventurequebec.ca',
+     desc:"Réseau de membres accrédités pour la randonnée et le plein air à travers les régions touristiques du Québec."},
+    {titre:'Fédération québécoise de la montagne et de l\'escalade', etape:'toutes', categorie:'Rando', url:'https://www.fqme.qc.ca',
+     desc:"Référence pour l'escalade et la randonnée en montagne au Québec."},
+    {titre:'Les amis de la montagne', etape:'mtl', categorie:'Rando', url:'https://www.lemontroyal.qc.ca',
+     desc:"Organisme dédié au parc du Mont-Royal : sentiers, activités et conseils de visite."},
+    {titre:'Parc national de la Mauricie (Sépaq)', etape:'mau', categorie:'Rando', url:'https://www.sepaq.com/pq/mau',
+     desc:"Page dédiée du parc national de la Mauricie : sentiers, canoë, camping et observation de la faune."},
+    {titre:'Parc national du Mont-Orford (Sépaq)', etape:'she', categorie:'Rando', url:'https://www.sepaq.com/pq/mor',
+     desc:"Parc national des Cantons-de-l'Est : randonnée, plage et montagne, à proximité de Sherbrooke."},
+    {titre:'Parc du Mont-Bellevue', etape:'she', categorie:'Rando', url:'https://www.sherbrooke.ca',
+     desc:"Grand parc urbain de Sherbrooke avec sentiers de marche et de vélo de montagne, entrée libre."},
+    {titre:'Sentier des Caps de Charlevoix', etape:'que', categorie:'Rando', url:'https://www.sentierdescaps.com',
+     desc:"Réseau de sentiers surplombant le fleuve, à proximité de Québec, du niveau familial à la longue randonnée."},
+    {titre:'Promenade Samuel-De Champlain', etape:'que', categorie:'Rando', url:'https://www.capitale.gouv.qc.ca/lieux/promenade-samuel-de-champlain/',
+     desc:"Parc linéaire aménagé le long du fleuve à Québec, idéal pour la marche ou le vélo."},
+    {titre:'Vélo Québec - Route Verte', etape:'toutes', categorie:'Rando', url:'https://www.velo.qc.ca',
+     desc:"Réseau cyclable québécois et conseils pour parcourir la province à vélo."},
+
+    // --- Visite (patrimoine, culture, musées) ---
+    {titre:'Musée de la civilisation', etape:'que', categorie:'Visite', url:'https://www.mcq.org',
+     desc:"Grand musée du Vieux-Québec consacré à l'histoire et aux cultures du Québec."},
+    {titre:'Musée national des beaux-arts du Québec', etape:'que', categorie:'Visite', url:'https://www.mnbaq.org',
+     desc:"Plus importante collection d'art québécois, dans le parc des Champs-de-Bataille."},
+    {titre:'Château Frontenac', etape:'que', categorie:'Visite', url:'https://www.chateau-frontenac.com',
+     desc:"Emblème du Vieux-Québec ; visites guidées de l'hôtel historique disponibles."},
+    {titre:'Plaines d\'Abraham', etape:'que', categorie:'Visite', url:'https://www.plainesdabraham.ca',
+     desc:"Parc historique des Champs-de-Bataille, site des batailles de 1759-1760 et grand parc urbain."},
+    {titre:'Vieux-Port de Montréal', etape:'mtl', categorie:'Visite', url:'https://www.vieuxportdemontreal.com',
+     desc:"Site historique au bord du fleuve, entre quais, rues pavées et attractions familiales."},
+    {titre:'Basilique Notre-Dame de Montréal', etape:'mtl', categorie:'Visite', url:'https://www.basiliquenotredame.ca',
+     desc:"Basilique néogothique du Vieux-Montréal, l'une des plus visitées au pays."},
+    {titre:'Musée des beaux-arts de Montréal', etape:'mtl', categorie:'Visite', url:'https://www.mbam.qc.ca',
+     desc:"Un des musées d'art les plus visités en Amérique du Nord, au centre-ville de Montréal."},
+    {titre:'Pointe-à-Callière', etape:'mtl', categorie:'Visite', url:'https://pacmusee.qc.ca',
+     desc:"Musée d'archéologie et d'histoire construit sur le site même de la fondation de Montréal."},
+    {titre:'Château Ramezay', etape:'mtl', categorie:'Visite', url:'https://www.chateauramezay.qc.ca',
+     desc:"Plus ancien musée historique privé du Québec, dans une demeure du Vieux-Montréal."},
+    {titre:'Cité de l\'énergie', etape:'mau', categorie:'Visite', url:'https://www.citedelenergie.com',
+     desc:"Complexe muséal de Shawinigan sur l'histoire industrielle et l'hydroélectricité, avec tour d'observation."},
+    {titre:'Lieu historique national des Forges-du-Saint-Maurice', etape:'mau', categorie:'Visite', url:'https://parks.canada.ca/lhn-nhs/qc/saintmaurice',
+     desc:"Site de Parcs Canada retraçant les premières forges industrielles du pays, en Mauricie."},
+    {titre:'Musée d\'histoire de Sherbrooke (MHIST)', etape:'she', categorie:'Visite', url:'https://www.mhist.org',
+     desc:"Musée et centre d'archives sur l'histoire de Sherbrooke et des Cantons-de-l'Est."},
+
+    // --- A table (gastronomie) ---
+    {titre:'Guide Restos Québec', etape:'toutes', categorie:'A table', url:'https://guiderestosquebec.com',
+     desc:"Répertoire de restaurants, bistros et bonnes tables partout au Québec, classés par ville et type de cuisine."},
+    {titre:'RestoResto.ca', etape:'toutes', categorie:'A table', url:'https://restoresto.ca',
+     desc:"Autre répertoire de restaurants à travers le Québec, ville par ville."},
+    {titre:'Aliments du Québec', etape:'toutes', categorie:'A table', url:'https://www.alimentsduquebec.com',
+     desc:"Référence sur les produits alimentaires locaux et les producteurs à découvrir en région."},
+    {titre:'Marché Jean-Talon', etape:'mtl', categorie:'A table', url:'https://www.marchespublics-mtl.com',
+     desc:"Grand marché public de Montréal, produits frais et étals de fromages et bagels."},
+    {titre:'Marché Atwater', etape:'mtl', categorie:'A table', url:'https://www.marchespublics-mtl.com',
+     desc:"Marché public montréalais réputé pour ses boucheries, fromageries et pâtisseries."},
+    {titre:'MTLàTABLE', etape:'mtl', categorie:'A table', url:'https://www.mtl.org',
+     desc:"Événement gastronomique annuel de Tourisme Montréal mettant en vedette les restaurants de la ville."},
+    {titre:'Route des vins de Brome-Missisquoi', etape:'she', categorie:'A table', url:'https://www.laroutedesvins.ca',
+     desc:"Circuit de vignobles des Cantons-de-l'Est, entre dégustations et paysages de vergers."},
+    {titre:'Gastronomie - Tourisme Cantons-de-l\'Est', etape:'she', categorie:'A table', url:'https://www.cantonsdelest.com',
+     desc:"Section gourmande de l'office régional : microbrasseries, cidreries et bonnes tables de Sherbrooke et environs."},
+    {titre:'Économusées du Québec', etape:'toutes', categorie:'A table', url:'https://www.economusees.com',
+     desc:"Réseau d'ateliers-boutiques d'artisans et producteurs (fromages, cidres, chocolat...) à visiter en région."},
+    {titre:'Circuits gourmands - Tourisme Mauricie', etape:'mau', categorie:'A table', url:'https://www.tourismemauricie.com',
+     desc:"Suggestions de tables et de produits du terroir mauricien sur le site de l'office régional."},
+
+    // --- Activité (loisirs, familial, découvertes ludiques) ---
+    {titre:'Espace pour la vie', etape:'mtl', categorie:'Activité', url:'https://espacepourlavie.ca',
+     desc:"Complexe muséal montréalais regroupant Biodôme, Jardin botanique, Insectarium, Planétarium et Biosphère."},
+    {titre:'La Ronde', etape:'mtl', categorie:'Activité', url:'https://www.laronde.com',
+     desc:"Parc d'attractions de Montréal, sur l'île Sainte-Hélène."},
+    {titre:'Parc Jean-Drapeau', etape:'mtl', categorie:'Activité', url:'https://www.parcjeandrapeau.com',
+     desc:"Grand parc insulaire montréalais : plage, activités nautiques et espaces verts."},
+    {titre:'Casino de Montréal', etape:'mtl', categorie:'Activité', url:'https://casinos.lotoquebec.com',
+     desc:"Casino officiel de Montréal, situé sur le site de l'ancien pavillon de France d'Expo 67."},
+    {titre:'Aquarium du Québec (Sépaq)', etape:'que', categorie:'Activité', url:'https://www.sepaq.com/ct/aqu',
+     desc:"Aquarium et zoo aquatique de Québec, géré par la Sépaq."},
+    {titre:'Village Vacances Valcartier', etape:'que', categorie:'Activité', url:'https://www.valcartier.com',
+     desc:"Grand parc d'activités familiales près de Québec (glissades d'eau, neige selon la saison)."},
+    {titre:'AstroLab du Mont-Mégantic (Sépaq)', etape:'she', categorie:'Activité', url:'https://www.sepaq.com/pq/mme',
+     desc:"Parc national et centre d'astronomie des Cantons-de-l'Est, réputé pour son ciel étoilé."},
+    {titre:'Zoo de Granby', etape:'she', categorie:'Activité', url:'https://www.zoodegranby.com',
+     desc:"Zoo familial réputé, à proximité des Cantons-de-l'Est."},
+    {titre:'Parc olympique de Montréal', etape:'mtl', categorie:'Activité', url:'https://parcolympique.qc.ca',
+     desc:"Site des Jeux de 1976 à Montréal : tour d'observation et activités sportives."},
+    {titre:'Vélo Québec - activités urbaines', etape:'mtl', categorie:'Activité', url:'https://www.velo.qc.ca',
+     desc:"Suggestions de balades à vélo en ville et location de vélos en libre-service à Montréal."}
+  ];
+  let filtreEtapeGuide = 'toutes';
+  let filtreCatGuide = 'Toutes';
+
+  /* ============ OUTILS ============ */
+
+  function getStage(dateStr){
+    const last = STAGES[STAGES.length - 1];
+    if (dateStr === last.fin) return last;
+    return STAGES.find(s => dateStr >= s.debut && dateStr < s.fin) || null;
+  }
+
+  function listeJours(debut, fin){
+    const jours = [];
+    let d = new Date(debut + 'T00:00:00');
+    const f = new Date(fin + 'T00:00:00');
+    while (d <= f){
+      jours.push(d.toISOString().slice(0,10));
+      d.setDate(d.getDate() + 1);
+    }
+    return jours;
+  }
+
+  function formatDateCourt(dateStr){
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('fr-FR', {day:'numeric', month:'short'}).toUpperCase();
+  }
+  function formatDateLongue(dateStr){
+    const d = new Date(dateStr + 'T00:00:00');
+    let s = d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function formatDuree(min){
+    if (!min) return '';
+    const h = Math.floor(min/60), m = min%60;
+    if (h && m) return h + 'h' + String(m).padStart(2,'0');
+    if (h) return h + 'h';
+    return m + ' min';
+  }
+  function haversine(c1, c2){
+    const R = 6371;
+    const toRad = x => x * Math.PI/180;
+    const dLat = toRad(c2[0]-c1[0]), dLon = toRad(c2[1]-c1[1]);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(c1[0]))*Math.cos(toRad(c2[0]))*Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+  function lienCarte(coords){
+    return `https://www.google.com/maps/search/?api=1&query=${coords[0]},${coords[1]}`;
+  }
+
+  /* ============ RENDU CALENDRIER ============ */
+
+  function renderLegende(){
+    const el = document.getElementById('legende-etapes');
+    el.innerHTML = STAGES.map(s => `
+      <span class="legende-item"><span class="legende-pastille" style="background:${s.couleur};"></span>${s.nom}</span>
+    `).join('');
+  }
+
+  function renderAgenda(){
+    const jours = listeJours('2026-08-24', '2026-09-09');
+    const el = document.getElementById('agenda');
+    el.innerHTML = jours.map(dateStr => {
+      const stage = getStage(dateStr);
+      const evtsLogistique = logistiques.filter(l => l.date === dateStr);
+      const evtsDecouvertes = decouvertes.filter(d => d.date === dateStr);
+      const evtsTaches = taches.filter(t => t.date === dateStr);
+
+      const itemsLogistique = evtsLogistique.map(l => `
+        <div class="jour-item logistique">
+          <span class="icone" style="color:${stage ? stage.couleur : 'var(--fleuve)'};"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${LOGISTIQUE_ICONES[l.type]}</svg></span>
+          <span>${l.heure ? '<span class=\"heure\">' + l.heure + '</span>' : ''}${l.titre}</span>
+        </div>
+      `).join('');
+
+      const itemsDecouvertes = evtsDecouvertes.map(d => {
+        const cat = CATEGORIES[d.cat];
+        return `
+        <div class="jour-item">
+          <span class="icone" style="color:var(--encre);"><svg viewBox="0 0 24 24" class="${cat.classe}-stroke" stroke-linecap="round" stroke-linejoin="round" style="stroke:${getCatColor(d.cat)};">${cat.icone}</svg></span>
+          <span>${d.heure ? '<span class=\"heure\">' + d.heure + '</span>' : ''}<b>${d.titre}</b>${d.duree ? ' · ' + formatDuree(d.duree) : ''}</span>
+        </div>
+        `;
+      }).join('');
+
+      const itemsTaches = evtsTaches.map(t => `
+        <div class="jour-item">
+          <span class="icone" style="color:var(--or);"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="4" height="4" rx="0.8"/><path d="M5.5 6.5l0.8 0.8 1.4-1.4"/><path d="M11 6.5h9"/></svg></span>
+          <span><i>Pense-bête</i> - ${t.texte}${t.fait ? ' (fait)' : ''}</span>
+        </div>
+      `).join('');
+
+      const evtsNotes = notes.filter(n => n.date === dateStr);
+      const itemsNotes = evtsNotes.map(n => `
+        <div class="jour-item">
+          <span class="icone" style="color:#8a8574;"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/></svg></span>
+          <span><i>Note</i> - ${n.texte}</span>
+        </div>
+      `).join('');
+
+      const contenu = (itemsLogistique + itemsDecouvertes + itemsTaches + itemsNotes) || '<div class="jour-vide">Rien de prévu pour l\'instant.</div>';
+
+      return `
+        <div class="jour-row">
+          <div class="jour-bande" style="background:${stage ? stage.couleur : 'var(--papier-fonce)'};"></div>
+          <div class="jour-corps">
+            <div class="jour-entete">
+              <span class="jour-date">${formatDateLongue(dateStr)}</span>
+              ${stage ? `<span class="jour-etape-tag" style="background:${stage.couleur};">${stage.nom.toUpperCase()}</span>` : ''}
+            </div>
+            <div class="jour-items">${contenu}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function getCatColor(cat){
+    const map = {
+      'Activité':'var(--fleuve-clair)', 'Visite':'var(--rouge-stamp)',
+      'Rando':'var(--sapin)', 'A table':'var(--or)'
+    };
+    return map[cat] || 'var(--fleuve)';
+  }
+
+  /* ============ RENDU DECOUVERTES ============ */
+
+  let triActuel = 'jour';
+  let filtreCatActuel = 'Toutes';
+
+  function calculerDistances(){
+    const parDateHeure = [...decouvertes].sort((a,b) => (a.date+a.heure).localeCompare(b.date+b.heure));
+    parDateHeure.forEach((d, i) => {
+      if (i === 0 || !d.coords || !parDateHeure[i-1].coords){
+        d.distancePrec = null;
+      } else {
+        d.distancePrec = haversine(parDateHeure[i-1].coords, d.coords);
+      }
+    });
+  }
+
+  function renderDecouvertes(){
+    calculerDistances();
+    let liste = decouvertes.filter(d => filtreCatActuel === 'Toutes' || d.cat === filtreCatActuel);
+
+    if (triActuel === 'jour'){
+      liste = [...liste].sort((a,b) => (a.date+a.heure).localeCompare(b.date+b.heure));
+    } else if (triActuel === 'etape'){
+      liste = [...liste].sort((a,b) => {
+        const sa = getStage(a.date), sb = getStage(b.date);
+        const ia = sa ? STAGES.indexOf(sa) : 99, ib = sb ? STAGES.indexOf(sb) : 99;
+        return ia - ib || (a.date+a.heure).localeCompare(b.date+b.heure);
+      });
+    } else if (triActuel === 'categorie'){
+      liste = [...liste].sort((a,b) => a.cat.localeCompare(b.cat) || (a.date+a.heure).localeCompare(b.date+b.heure));
+    }
+
+    const grid = document.getElementById('decouvertes-grid');
+    grid.innerHTML = liste.map(d => {
+      const cat = CATEGORIES[d.cat];
+      const stage = getStage(d.date);
+      const distTxt = d.distancePrec != null ? `${d.distancePrec.toFixed(1)} km depuis la découverte précédente` : '';
+      return `
+      <div class="carte-decouverte" data-id="${d.id}" style="border-left-color:${stage ? stage.couleur : 'var(--papier-fonce)'};">
+        <div class="stamp" style="border-color:${stage ? stage.couleur : 'var(--rouge-stamp)'}; color:${stage ? stage.couleur : 'var(--rouge-stamp)'};">${stage ? stage.abrev : ''}<br>${formatDateCourt(d.date)}</div>
+        <span class="cat-badge ${cat.classe}"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${cat.icone}</svg>${d.cat.toUpperCase()}</span>
+        <h4>${d.titre}</h4>
+        <div class="meta">${d.heure ? '<span class="mono">' + d.heure + '</span>' : ''}${d.duree ? ' · ' + formatDuree(d.duree) : ''}</div>
+        ${d.adresse ? `<div class="meta">${d.adresse}</div>` : ''}
+        ${distTxt ? `<div class="distance">${distTxt}</div>` : ''}
+        <p class="note">${d.note || 'Aucune note ajoutée.'}</p>
+        <div class="liens">
+          ${d.url ? `<a href="${d.url}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg>Site</a>` : ''}
+          ${d.coords ? `<a href="${lienCarte(d.coords)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M9 4L3 6.5v14L9 18m0-14l6 2m-6-2v14m6-12l6-2.5v14L15 18m0-14v14"/></svg>Carte</a>` : ''}
+        </div>
+      </div>
+      `;
+    }).join('');
+  }
+
+  document.getElementById('filters').addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+    document.querySelectorAll('#filters .chip').forEach(c => c.removeAttribute('data-active'));
+    btn.setAttribute('data-active', 'true');
+    filtreCatActuel = btn.dataset.cat;
+    renderDecouvertes();
+  });
+
+  document.querySelectorAll('.tri-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tri-btn').forEach(b => b.removeAttribute('data-active'));
+      btn.setAttribute('data-active', 'true');
+      triActuel = btn.dataset.tri;
+      renderDecouvertes();
+    });
+  });
+
+  document.getElementById('decouvertes-grid').addEventListener('click', (e) => {
+    if (e.target.closest('a')) return; // laisser les liens (Site / Carte) fonctionner normalement
+    const card = e.target.closest('.carte-decouverte');
+    if (!card) return;
+    ouvrirModaleDecouverteEdition(card.dataset.id);
+  });
+
+  /* ============ RENDU TACHES (A FAIRE) ============ */
+
+  function renderTodo(){
+    const groupes = [];
+    taches.forEach(t => { if (!groupes.includes(t.groupe)) groupes.push(t.groupe); });
+
+    const el = document.getElementById('todo-groupes');
+    if (!taches.length){
+      el.innerHTML = '<p class="todo-vide">Aucune tâche pour l\'instant. Utilisez "+ Ajouter" pour commencer.</p>';
+      return;
+    }
+    el.innerHTML = groupes.map(g => {
+      const itemsHtml = taches.filter(t => t.groupe === g)
+        .slice()
+        .sort((a, b) => (ORDRE_PRIORITE[a.priorite] ?? 1) - (ORDRE_PRIORITE[b.priorite] ?? 1))
+        .map(t => {
+          const prio = PRIORITES[t.priorite] || PRIORITES.moyenne;
+          return `
+        <div class="todo-item ${t.fait ? 'done' : ''}" data-id="${t.id}">
+          <input type="checkbox" ${t.fait ? 'checked' : ''} data-action="toggle" data-id="${t.id}">
+          <span class="todo-prio" style="background:${prio.couleur};" title="Priorité ${prio.label}"></span>
+          <span class="todo-texte">${t.texte}</span>
+          ${t.date ? `<span class="todo-date">${formatDateCourt(t.date)}</span>` : ''}
+          <button type="button" class="todo-suppr" data-action="suppr" data-id="${t.id}" aria-label="Supprimer">×</button>
+        </div>
+      `;
+        }).join('');
+      return `<div class="todo-groupe"><h3>${g}</h3>${itemsHtml}</div>`;
+    }).join('');
+
+    // liste des groupes existants, pour l'autocomplétion du champ "Groupe"
+    const datalist = document.getElementById('liste-groupes');
+    datalist.innerHTML = groupes.map(g => `<option value="${g}"></option>`).join('');
+  }
+
+  document.getElementById('todo-groupes').addEventListener('click', (e) => {
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const id = target.dataset.id;
+    if (target.dataset.action === 'suppr'){
+      taches = taches.filter(t => t.id !== id);
+      renderTodo();
+      renderAgenda();
+      sauvegarderEtat();
+    }
+  });
+  document.getElementById('todo-groupes').addEventListener('change', (e) => {
+    if (e.target.dataset.action === 'toggle'){
+      const id = e.target.dataset.id;
+      const t = taches.find(t => t.id === id);
+      if (t){
+        t.fait = e.target.checked;
+        renderTodo();
+        renderAgenda();
+        sauvegarderEtat();
+      }
+    }
+  });
+
+  const overlayTache = document.getElementById('modal-overlay-tache');
+  const btnOpenTache = document.getElementById('btn-open-modal-tache');
+  const btnCloseTache = document.getElementById('btn-close-modal-tache');
+  const btnCancelTache = document.getElementById('btn-cancel-tache');
+  const formTache = document.getElementById('form-tache');
+
+  function openModalTache(){
+    formTache.reset();
+    document.querySelectorAll('.prio-choice label').forEach(l => l.classList.remove('selected'));
+    document.querySelector('.prio-choice label[data-prio="moyenne"]').classList.add('selected');
+    overlayTache.classList.add('open');
+  }
+  function closeModalTache(){ overlayTache.classList.remove('open'); }
+
+  btnOpenTache.addEventListener('click', openModalTache);
+  btnCloseTache.addEventListener('click', closeModalTache);
+  btnCancelTache.addEventListener('click', closeModalTache);
+  overlayTache.addEventListener('click', (e) => { if (e.target === overlayTache) closeModalTache(); });
+
+  formTache.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const texte = document.getElementById('t-texte').value.trim();
+    const groupe = document.getElementById('t-groupe').value.trim();
+    const date = document.getElementById('t-date').value || null;
+    const prioInput = formTache.querySelector('input[name=prio]:checked');
+    const priorite = prioInput ? prioInput.value : 'moyenne';
+    if (!texte || !groupe) return;
+    taches.push({id: genererUid(), texte, groupe, date, fait:false, priorite});
+    renderTodo();
+    renderAgenda();
+    sauvegarderEtat();
+    closeModalTache();
+  });
+
+  /* ============ RENDU NOTES (BLOC-NOTES) ============ */
+
+  function renderNotes(){
+    const el = document.getElementById('notes-grid');
+    if (!notes.length){
+      el.innerHTML = '<p class="todo-vide">Aucune note pour l\'instant. Utilisez "+ Ajouter" pour commencer.</p>';
+      return;
+    }
+    el.innerHTML = notes.map(n => `
+      <div class="note-card" data-id="${n.id}">
+        ${n.date ? `<span class="note-date">${formatDateCourt(n.date)}</span>` : ''}
+        <div class="note-texte">${n.texte}</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('notes-grid').addEventListener('click', (e) => {
+    const card = e.target.closest('.note-card');
+    if (!card) return;
+    ouvrirModaleNote(card.dataset.id);
+  });
+
+  const overlayNote = document.getElementById('modal-overlay-note');
+  const btnCloseNote = document.getElementById('btn-close-modal-note');
+  const btnCancelNote = document.getElementById('btn-cancel-note');
+  const btnDeleteNote = document.getElementById('btn-delete-note');
+  const formNote = document.getElementById('form-note');
+  const titreModalNote = document.getElementById('titre-modal-note');
+  let noteEnEditionId = null;
+
+  function ouvrirModaleNote(id){
+    formNote.reset();
+    if (id){
+      const n = notes.find(n => n.id === id);
+      noteEnEditionId = id;
+      titreModalNote.textContent = 'Modifier la note';
+      document.getElementById('n-texte').value = n.texte;
+      document.getElementById('n-date').value = n.date || '';
+      btnDeleteNote.style.display = '';
+    } else {
+      noteEnEditionId = null;
+      titreModalNote.textContent = 'Nouvelle note';
+      btnDeleteNote.style.display = 'none';
+    }
+    overlayNote.classList.add('open');
+  }
+  function fermerModaleNote(){ overlayNote.classList.remove('open'); }
+
+  document.getElementById('btn-add-note').addEventListener('click', () => ouvrirModaleNote(null));
+  btnCloseNote.addEventListener('click', fermerModaleNote);
+  btnCancelNote.addEventListener('click', fermerModaleNote);
+  overlayNote.addEventListener('click', (e) => { if (e.target === overlayNote) fermerModaleNote(); });
+
+  btnDeleteNote.addEventListener('click', () => {
+    if (noteEnEditionId){
+      notes = notes.filter(n => n.id !== noteEnEditionId);
+      renderNotes();
+      renderAgenda();
+      sauvegarderEtat();
+    }
+    fermerModaleNote();
+  });
+
+  formNote.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const texte = document.getElementById('n-texte').value.trim();
+    const date = document.getElementById('n-date').value || null;
+    if (!texte) return;
+    if (noteEnEditionId){
+      const n = notes.find(n => n.id === noteEnEditionId);
+      if (n){ n.texte = texte; n.date = date; }
+    } else {
+      notes.unshift({id: genererUid(), texte, date});
+    }
+    renderNotes();
+    renderAgenda();
+    sauvegarderEtat();
+    fermerModaleNote();
+  });
+
+  /* ============ RENDU GUIDE (ANNUAIRE) ============ */
+
+  function renderGuide(){
+    let liste = guideAnnuaire.filter(g =>
+      (filtreEtapeGuide === 'toutes' || g.etape === 'toutes' || g.etape === filtreEtapeGuide) &&
+      (filtreCatGuide === 'Toutes' || g.categorie === 'Toutes' || g.categorie === filtreCatGuide)
+    );
+    const grid = document.getElementById('guide-grid');
+    if (!liste.length){
+      grid.innerHTML = '<p class="todo-vide">Aucune référence pour cette combinaison étape / catégorie.</p>';
+      return;
+    }
+    grid.innerHTML = liste.map(g => {
+      const stage = STAGES.find(s => s.id === g.etape);
+      const cat = CATEGORIES[g.categorie];
+      const tags = `
+        <span class="guide-tag" style="background:${stage ? stage.couleur : '#8a8574'};">${stage ? stage.nom : 'Toutes régions'}</span>
+        ${cat ? `<span class="cat-badge ${cat.classe}"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${cat.icone}</svg>${g.categorie.toUpperCase()}</span>` : ''}
+      `;
+      return `
+      <div class="guide-card">
+        <div class="guide-tags">${tags}</div>
+        <h4>${g.titre}</h4>
+        <p>${g.desc}</p>
+        <div class="guide-actions">
+          <a class="guide-lien" href="${g.url}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18"/></svg>Visiter le site</a>
+          <button type="button" data-titre="${g.titre}" data-url="${g.url}" data-cat="${g.categorie}">+ Découverte</button>
+        </div>
+      </div>
+      `;
+    }).join('');
+  }
+
+  document.getElementById('filters-guide-etape').addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+    document.querySelectorAll('#filters-guide-etape .chip').forEach(c => c.removeAttribute('data-active'));
+    btn.setAttribute('data-active', 'true');
+    filtreEtapeGuide = btn.dataset.etape;
+    renderGuide();
+  });
+  document.getElementById('filters-guide-cat').addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+    document.querySelectorAll('#filters-guide-cat .chip').forEach(c => c.removeAttribute('data-active'));
+    btn.setAttribute('data-active', 'true');
+    filtreCatGuide = btn.dataset.cat;
+    renderGuide();
+  });
+  document.getElementById('guide-grid').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-titre]');
+    if (!btn) return;
+    openModal({titre: btn.dataset.titre, url: btn.dataset.url, categorie: btn.dataset.cat});
+  });
+
+  /* ============ RENDU CARTE (LEAFLET) ============ */
+
+  let carteMap = null;
+  let carteMarkers = [];
+  let filtreCatCarte = 'Toutes';
+
+  function iconePourCategorie(cat){
+    const c = CATEGORIES[cat];
+    const couleur = getCatColor(cat);
+    return L.divIcon({
+      className: '',
+      html: `<div class="marqueur-decouverte" style="border:2px solid ${couleur};"><svg viewBox="0 0 24 24" stroke="${couleur}" stroke-linecap="round" stroke-linejoin="round">${c.icone}</svg></div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      popupAnchor: [0, -15]
+    });
+  }
+
+  function initCarte(){
+    if (carteMap) return;
+    carteMap = L.map('carte-leaflet');
+    carteMap.setView(CENTRE_PAR_DEFAUT, 7);
+    const tuiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(carteMap);
+    let erreurs = 0;
+    tuiles.on('tileerror', () => {
+      erreurs++;
+      if (erreurs > 6){
+        document.getElementById('carte-note').innerHTML =
+          '<b>La carte n\'a pas pu se charger.</b> Vérifiez votre connexion internet - le reste de l\'application continue de fonctionner hors ligne.';
+        document.getElementById('carte-note').style.color = 'var(--rouge-stamp)';
+      }
+    });
+  }
+
+  function renderCarte(){
+    initCarte();
+    carteMarkers.forEach(m => carteMap.removeLayer(m));
+    carteMarkers = [];
+    const liste = decouvertes.filter(d => d.coords && (filtreCatCarte === 'Toutes' || d.cat === filtreCatCarte));
+    liste.forEach(d => {
+      const marker = L.marker(d.coords, {icon: iconePourCategorie(d.cat)}).addTo(carteMap);
+      const metaTxt = [formatDateCourt(d.date), d.heure].filter(Boolean).join(' · ');
+      marker.bindPopup(`
+        <div class="popup-decouverte">
+          <h4>${d.titre}</h4>
+          <div class="meta">${metaTxt}</div>
+          <p>${d.note || ''}</p>
+          ${d.url ? `<a href="${d.url}" target="_blank" rel="noopener">Voir le site</a>` : ''}
+        </div>
+      `, {maxWidth: Math.min(240, window.innerWidth - 60), minWidth: 160});
+      carteMarkers.push(marker);
+    });
+    if (liste.length){
+      const bounds = L.latLngBounds(liste.map(d => d.coords));
+      carteMap.fitBounds(bounds, {padding: [30, 30], maxZoom: 13});
+    } else {
+      carteMap.setView(CENTRE_PAR_DEFAUT, 7);
+    }
+  }
+
+  document.getElementById('filters-carte').addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+    document.querySelectorAll('#filters-carte .chip').forEach(c => c.removeAttribute('data-active'));
+    btn.setAttribute('data-active', 'true');
+    filtreCatCarte = btn.dataset.cat;
+    renderCarte();
+  });
+
+  /* ============ NAVIGATION ONGLETS ============ */
+
+  const buttons = document.querySelectorAll('nav.tabs button');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+      if (btn.dataset.panel === 'carte'){
+        renderCarte();
+        setTimeout(() => { if (carteMap) carteMap.invalidateSize(); }, 50);
+      }
+    });
+  });
+
+  /* ============ MODALE : LOCALISATION ============ */
+
+  const CENTRE_PAR_DEFAUT = [46.05, -72.7];
+
+  const overlay = document.getElementById('modal-overlay');
+  const btnOpen = document.getElementById('btn-open-modal');
+  const btnClose = document.getElementById('btn-close-modal');
+  const btnCancel = document.getElementById('btn-cancel');
+  const locStatus = document.getElementById('loc-status');
+  const locResults = document.getElementById('loc-results');
+  const inputRecherche = document.getElementById('f-recherche-lieu');
+  const btnSearch = document.getElementById('btn-search-lieu');
+  const form = document.getElementById('form-decouverte');
+
+  let map = null;
+  let marker = null;
+  let currentCoords = null;
+  let currentAdresse = '';
+
+  function initMap(coords, zoom){
+    currentCoords = coords;
+    if (!map){
+      map = L.map('loc-map').setView(coords, zoom);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19
+      }).addTo(map);
+      marker = L.marker(coords, {draggable:true}).addTo(map);
+      marker.on('dragend', () => {
+        const p = marker.getLatLng();
+        currentCoords = [p.lat, p.lng];
+        currentAdresse = '';
+        updateStatusText(currentCoords, 'Position ajustée manuellement');
+      });
+      map.on('click', (e) => {
+        marker.setLatLng(e.latlng);
+        currentCoords = [e.latlng.lat, e.latlng.lng];
+        currentAdresse = '';
+        updateStatusText(currentCoords, 'Position ajustée manuellement');
+      });
+    } else {
+      map.setView(coords, zoom);
+      marker.setLatLng(coords);
+    }
+  }
+
+  function updateStatusText(coords, label){
+    locStatus.style.color = '#8a8574';
+    locStatus.innerHTML = `${label} - <span class="coords">${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}</span>`;
+  }
+
+  async function rechercherLieu(){
+    const q = inputRecherche.value.trim();
+    if (!q) return;
+    locResults.innerHTML = '<div class="loc-result-item">Recherche en cours...</div>';
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=ca&accept-language=fr`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.length){
+        locResults.innerHTML = '<div class="loc-result-item">Aucun résultat. Essayez une autre formulation, ou placez le repère à la main.</div>';
+        return;
+      }
+      locResults.innerHTML = '';
+      data.forEach(place => {
+        const item = document.createElement('div');
+        item.className = 'loc-result-item';
+        const nomCourt = place.display_name.split(',')[0];
+        item.innerHTML = `<span class="nom">${nomCourt}</span><span class="adresse">${place.display_name}</span>`;
+        item.addEventListener('click', () => {
+          const coords = [parseFloat(place.lat), parseFloat(place.lon)];
+          currentAdresse = place.display_name;
+          initMap(coords, 15);
+          updateStatusText(coords, 'Lieu trouvé');
+          locResults.innerHTML = '';
+          inputRecherche.value = nomCourt;
+        });
+        locResults.appendChild(item);
+      });
+    } catch (err) {
+      locResults.innerHTML = '<div class="loc-result-item">Recherche indisponible (pas de connexion internet). Placez le repère à la main.</div>';
+    }
+  }
+
+  btnSearch.addEventListener('click', rechercherLieu);
+  inputRecherche.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter'){ e.preventDefault(); rechercherLieu(); }
+  });
+
+  let editingDecouverteId = null;
+  const titreModalDecouverte = document.getElementById('titre-modal-decouverte');
+  const btnDeleteDecouverte = document.getElementById('btn-delete-decouverte');
+
+  function openModal(prefill){
+    overlay.classList.add('open');
+    form.reset();
+    locResults.innerHTML = '';
+    currentAdresse = '';
+    currentCoords = null;
+    document.querySelectorAll('.cat-choice label').forEach(l => l.classList.remove('selected'));
+    locStatus.textContent = 'Recherchez un lieu, ou placez le repère directement sur la carte.';
+
+    if (prefill && prefill.id){
+      // édition complète d'une découverte existante
+      editingDecouverteId = prefill.id;
+      titreModalDecouverte.textContent = 'Modifier la découverte';
+      btnDeleteDecouverte.style.display = '';
+      document.getElementById('f-titre').value = prefill.titre || '';
+      document.getElementById('f-date').value = prefill.date || '';
+      document.getElementById('f-heure').value = prefill.heure || '';
+      document.getElementById('f-duree').value = prefill.duree || '';
+      document.getElementById('f-url').value = prefill.url || '';
+      document.getElementById('f-note').value = prefill.note || '';
+      currentAdresse = prefill.adresse || '';
+      if (prefill.cat){
+        const label = document.querySelector(`.cat-choice label[data-cat="${prefill.cat}"]`);
+        if (label){ label.classList.add('selected'); label.querySelector('input').checked = true; }
+      }
+      setTimeout(() => {
+        if (prefill.coords){
+          initMap(prefill.coords, 14);
+          updateStatusText(prefill.coords, prefill.adresse ? 'Lieu enregistré' : 'Position enregistrée');
+        } else {
+          initMap(CENTRE_PAR_DEFAUT, 7);
+        }
+        map.invalidateSize();
+      }, 50);
+    } else {
+      // nouvelle découverte (vierge, ou pré-remplie depuis le Guide)
+      editingDecouverteId = null;
+      titreModalDecouverte.textContent = 'Nouvelle découverte';
+      btnDeleteDecouverte.style.display = 'none';
+      if (prefill){
+        document.getElementById('f-titre').value = prefill.titre || '';
+        document.getElementById('f-url').value = prefill.url || '';
+        if (prefill.categorie && prefill.categorie !== 'Toutes'){
+          const label = document.querySelector(`.cat-choice label[data-cat="${prefill.categorie}"]`);
+          if (label){ label.classList.add('selected'); label.querySelector('input').checked = true; }
+        }
+      } else {
+        document.getElementById('f-date').valueAsDate = new Date();
+      }
+      setTimeout(() => {
+        initMap(CENTRE_PAR_DEFAUT, 7);
+        map.invalidateSize();
+      }, 50);
+    }
+  }
+  function closeModal(){ overlay.classList.remove('open'); }
+
+  function ouvrirModaleDecouverteEdition(id){
+    const d = decouvertes.find(x => x.id === id);
+    if (d) openModal(d);
+  }
+
+  btnDeleteDecouverte.addEventListener('click', () => {
+    if (editingDecouverteId){
+      decouvertes = decouvertes.filter(d => d.id !== editingDecouverteId);
+      renderDecouvertes();
+      renderAgenda();
+      sauvegarderEtat();
+    }
+    closeModal();
+  });
+
+  btnOpen.addEventListener('click', () => openModal());
+  btnClose.addEventListener('click', closeModal);
+  btnCancel.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+
+  document.querySelectorAll('.cat-choice label').forEach(label => {
+    label.addEventListener('click', () => {
+      document.querySelectorAll('.cat-choice label').forEach(l => l.classList.remove('selected'));
+      label.classList.add('selected');
+    });
+  });
+
+  document.querySelectorAll('.prio-choice label').forEach(label => {
+    label.addEventListener('click', () => {
+      document.querySelectorAll('.prio-choice label').forEach(l => l.classList.remove('selected'));
+      label.classList.add('selected');
+    });
+  });
+
+  /* ============ MODALE : SOUMISSION ============ */
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const titre = document.getElementById('f-titre').value.trim();
+    const catInput = form.querySelector('input[name=cat]:checked');
+    if (!titre || !catInput){
+      locStatus.style.color = 'var(--rouge-stamp)';
+      if (!catInput) locStatus.textContent = 'Choisissez une catégorie avant d\'enregistrer.';
+      return;
+    }
+    const donnees = {
+      titre,
+      cat: catInput.value,
+      date: document.getElementById('f-date').value || new Date().toISOString().slice(0,10),
+      heure: document.getElementById('f-heure').value,
+      duree: parseInt(document.getElementById('f-duree').value, 10) || null,
+      note: document.getElementById('f-note').value.trim(),
+      url: document.getElementById('f-url').value.trim(),
+      adresse: currentAdresse,
+      coords: currentCoords
+    };
+    if (editingDecouverteId){
+      const idx = decouvertes.findIndex(d => d.id === editingDecouverteId);
+      if (idx !== -1) decouvertes[idx] = {...decouvertes[idx], ...donnees};
+    } else {
+      decouvertes.push({id: genererUid(), ...donnees});
+    }
+    renderDecouvertes();
+    renderAgenda();
+    sauvegarderEtat();
+    closeModal();
+  });
+
+  /* ============ ECOUTE DES MISES A JOUR DISTANTES ============ */
+
+  function ecouterMisesAJour(){
+    if (!refCarnet) return;
+    refCarnet.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (!data){
+        // rien en ligne pour l'instant : on pousse l'état local de départ
+        sauvegarderEtat();
+        return;
+      }
+      decouvertes = data.decouvertes || [];
+      taches = data.taches || [];
+      notes = data.notes || [];
+      renderDecouvertes();
+      renderAgenda();
+      renderTodo();
+      renderNotes();
+      const panelCarte = document.getElementById('panel-carte');
+      if (panelCarte && panelCarte.classList.contains('active')) renderCarte();
+    });
+  }
+
+  /* ============ INITIALISATION ============ */
+
+  renderLegende();
+  renderAgenda();
+  renderDecouvertes();
+  renderTodo();
+  renderNotes();
+  renderGuide();
+
+  if (firebasePret){
+    ecouterMisesAJour();
+    const el = document.getElementById('sync-status');
+    el.textContent = '● Synchronisation activée';
+    el.classList.add('actif');
+  } else {
+    console.info('Synchronisation désactivée : complétez firebaseConfig et CHEMIN_SECRET en haut du script pour l\'activer.');
+  }
+</script>
+</body>
+</html>
