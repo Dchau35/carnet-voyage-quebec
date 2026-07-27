@@ -2123,14 +2123,7 @@
     });
 
     refTaches.on('value', (snapshot) => {
-      const data = snapshot.val();
-      if (data === null){
-        // rien en ligne pour l'instant : on pousse les tâches de départ définies dans le code,
-        // chacune sous sa propre clé (la mise à jour de l'affichage suivra via ce même écouteur).
-        taches.forEach(t => sauvegarderItem(refTaches, t));
-        return;
-      }
-      taches = objetVersListe(data);
+      taches = objetVersListe(snapshot.val());
       renderTodo();
       renderAgenda();
     });
