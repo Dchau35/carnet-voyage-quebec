@@ -592,6 +592,38 @@
     .section-header-row .btn-primary{font-size:0.78rem; padding:8px 12px;}
     .field-row{flex-direction:column; gap:0;}
   }
+
+  /* ---- Impression / export PDF du calendrier ---- */
+  @media print{
+    @page{ size: landscape; margin: 9mm; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body{ background:#fff; }
+    body *{ visibility: hidden; }
+    #panel-calendrier, #panel-calendrier *{ visibility: visible; }
+    #panel-calendrier{
+      position: absolute; left:0; top:0; width:100%;
+      display:block !important;
+    }
+    #btn-export-calendrier{ display:none !important; }
+    .app{ box-shadow:none; max-width:none; }
+    .section-header-row{ padding-right:0; }
+    .section-eyebrow{ display:none; }
+    h2.section-title{ font-size:0.95rem; margin:0 0 6px; }
+    .legende-etapes{ font-size:7.5px; gap:8px; margin-bottom:6px; }
+    .legende-pastille{ width:8px; height:8px; }
+    .agenda{ column-count:2; column-gap:14px; }
+    .jour-row{ break-inside: avoid; margin-bottom:3px; border-width:1px; }
+    .jour-bande{ width:4px; }
+    .jour-corps{ padding:3px 6px; }
+    .jour-entete{ margin-bottom:2px; gap:5px; }
+    .jour-date{ font-size:8px; }
+    .jour-etape-tag{ font-size:6px; padding:0px 4px; }
+    .jour-items{ gap:2px; }
+    .jour-item{ font-size:6.5px; gap:4px; line-height:1.25; }
+    .jour-item .icone{ width:9px; height:9px; }
+    .jour-item .heure{ font-size:6px; }
+    .jour-vide{ font-size:6.5px; }
+  }
 </style>
 </head>
 <body>
@@ -638,8 +670,13 @@
 
     <!-- CALENDRIER -->
     <section class="panel active" id="panel-calendrier">
-      <span class="section-eyebrow">Jour par jour</span>
-      <h2 class="section-title">Calendrier</h2>
+      <div class="section-header-row">
+        <div>
+          <span class="section-eyebrow">Jour par jour</span>
+          <h2 class="section-title">Calendrier</h2>
+        </div>
+        <button class="btn-primary" id="btn-export-calendrier">Exporter</button>
+      </div>
 
       <div class="legende-etapes" id="legende-etapes"></div>
       <div class="agenda" id="agenda"></div>
@@ -1804,7 +1841,7 @@
 
   function initCarte(){
     if (carteMap) return;
-    carteMap = L.map('carte-leaflet');
+    carteMap = L.map('carte-leaflet', {keyboard: false});
     carteMap.setView(CENTRE_PAR_DEFAUT, 7);
     const tuiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
@@ -1872,6 +1909,10 @@
     renderCarte();
   });
 
+  document.getElementById('btn-export-calendrier').addEventListener('click', () => {
+    window.print();
+  });
+
   /* ============ NAVIGATION ONGLETS ============ */
 
   const buttons = document.querySelectorAll('nav.tabs button');
@@ -1910,7 +1951,7 @@
   function initMap(coords, zoom){
     currentCoords = coords;
     if (!map){
-      map = L.map('loc-map').setView(coords, zoom);
+      map = L.map('loc-map', {keyboard: false}).setView(coords, zoom);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         subdomains: 'abcd',
