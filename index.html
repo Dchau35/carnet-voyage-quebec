@@ -1951,7 +1951,7 @@
   function initMap(coords, zoom){
     currentCoords = coords;
     if (!map){
-      map = L.map('loc-map', {keyboard: false}).setView(coords, zoom);
+      map = L.map('loc-map', {keyboard: false, zoomControl: false}).setView(coords, zoom);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         subdomains: 'abcd',
@@ -2098,7 +2098,8 @@
   btnOpen.addEventListener('click', () => openModal());
   btnClose.addEventListener('click', closeModal);
   btnCancel.addEventListener('click', closeModal);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+  // Fermeture volontairement limitée aux boutons "×" et "Annuler" (pas de clic extérieur),
+  // pour éviter toute fermeture accidentelle liée aux interactions avec la mini-carte.
 
   document.querySelectorAll('.cat-choice label').forEach(label => {
     label.addEventListener('click', () => {
