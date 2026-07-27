@@ -1101,7 +1101,8 @@
     {date:'2026-09-09', heure:'',      titre:"Rentrée officielle des classes (Bishop's)", type:'elias'},
     {date:'2026-09-09', heure:'12:00', titre:'Départ de Sherbrooke vers YUL (Fleur et David)', type:'voiture'},
     {date:'2026-09-09', heure:'18:00', titre:'Restitution voiture Alamo (aéroport YUL) - conf. #2122428520', type:'voiture'},
-    {date:'2026-09-09', heure:'21:00', titre:'Vol retour Montréal → Nantes', type:'vol'}
+    {date:'2026-09-09', heure:'21:15', titre:'Vol retour Montréal YUL → Nantes (arrivée 10h10 le 10 septembre)', type:'vol'},
+    {date:'2026-09-10', heure:'10:10', titre:'Arrivée à Nantes', type:'vol'}
   ];
 
   let decouvertes = [
@@ -1266,12 +1267,22 @@
     return STAGES.find(s => dateStr >= s.debut && dateStr < s.fin) || null;
   }
 
+  // Construit une date "AAAA-MM-JJ" à partir des composantes LOCALES d'un objet Date,
+  // pour éviter le décalage d'un jour que provoquerait toISOString() (basé sur l'UTC)
+  // pour les personnes dans un fuseau horaire en avance sur UTC (ex: France).
+  function dateLocaleISO(d){
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const j = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${j}`;
+  }
+
   function listeJours(debut, fin){
     const jours = [];
     let d = new Date(debut + 'T00:00:00');
     const f = new Date(fin + 'T00:00:00');
     while (d <= f){
-      jours.push(d.toISOString().slice(0,10));
+      jours.push(dateLocaleISO(d));
       d.setDate(d.getDate() + 1);
     }
     return jours;
@@ -1313,58 +1324,72 @@
     `).join('');
   }
 
+  function heureVersMinutes(heure){
+    if (!heure) return -1;
+    const m = String(heure).match(/^(\d{1,2}):(\d{2})$/);
+    if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    const motsClefs = {matin: 8 * 60, midi: 12 * 60, 'après-midi': 14 * 60, soir: 19 * 60};
+    const cle = String(heure).toLowerCase();
+    return (cle in motsClefs) ? motsClefs[cle] : -1;
+  }
+
   function renderAgenda(){
-    const jours = listeJours('2026-08-24', '2026-09-09');
+    const jours = listeJours('2026-08-23', '2026-09-10');
     const el = document.getElementById('agenda');
     el.innerHTML = jours.map(dateStr => {
       const stage = getStage(dateStr);
-      const evtsLogistique = logistiques.filter(l => l.date === dateStr);
-      const evtsDecouvertes = decouvertes.filter(d => d.date === dateStr);
-      const evtsTaches = taches.filter(t => t.date === dateStr);
+      const itemsJour = [];
 
-      const itemsLogistique = evtsLogistique.map(l => `
+      logistiques.filter(l => l.date === dateStr).forEach(l => {
+        itemsJour.push({min: heureVersMinutes(l.heure), html: `
         <div class="jour-item logistique">
           <span class="icone" style="color:${stage ? stage.couleur : 'var(--fleuve)'};"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${LOGISTIQUE_ICONES[l.type]}</svg></span>
           <span>${l.heure ? '<span class=\"heure\">' + l.heure + '</span>' : ''}${l.titre}</span>
         </div>
-      `).join('');
+        `});
+      });
 
-      const itemsDecouvertes = evtsDecouvertes.map(d => {
+      HOTELS.filter(h => h.checkin === dateStr || h.checkout === dateStr).forEach(h => {
+        const estArrivee = h.checkin === dateStr;
+        const heureH = estArrivee ? h.checkinHeure : h.checkoutHeure;
+        itemsJour.push({min: heureVersMinutes(heureH), html: `
+        <div class="jour-item logistique">
+          <span class="icone" style="color:${stage ? stage.couleur : 'var(--fleuve)'};"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${LOGISTIQUE_ICONES.hotel}</svg></span>
+          <span><span class="heure">${heureH}</span>${estArrivee ? 'Arrivée' : 'Départ'} - ${h.nom}</span>
+        </div>
+        `});
+      });
+
+      decouvertes.filter(d => d.date === dateStr).forEach(d => {
         const cat = CATEGORIES[d.cat];
-        return `
+        itemsJour.push({min: heureVersMinutes(d.heure), html: `
         <div class="jour-item">
-          <span class="icone" style="color:var(--encre);"><svg viewBox="0 0 24 24" class="${cat.classe}-stroke" stroke-linecap="round" stroke-linejoin="round" style="stroke:${getCatColor(d.cat)};">${cat.icone}</svg></span>
+          <span class="icone" style="color:var(--encre);"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="stroke:${getCatColor(d.cat)};">${cat.icone}</svg></span>
           <span>${d.heure ? '<span class=\"heure\">' + d.heure + '</span>' : ''}<b>${d.titre}</b>${d.duree ? ' · ' + formatDuree(d.duree) : ''}</span>
         </div>
-        `;
-      }).join('');
+        `});
+      });
 
-      const itemsTaches = evtsTaches.map(t => `
+      taches.filter(t => t.date === dateStr).forEach(t => {
+        itemsJour.push({min: -1, html: `
         <div class="jour-item">
           <span class="icone" style="color:var(--or);"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="4" height="4" rx="0.8"/><path d="M5.5 6.5l0.8 0.8 1.4-1.4"/><path d="M11 6.5h9"/></svg></span>
           <span><i>Pense-bête</i> - ${t.texte}${t.fait ? ' (fait)' : ''}</span>
         </div>
-      `).join('');
+        `});
+      });
 
-      const evtsNotes = notes.filter(n => n.date === dateStr);
-      const itemsNotes = evtsNotes.map(n => `
+      notes.filter(n => n.date === dateStr).forEach(n => {
+        itemsJour.push({min: -1, html: `
         <div class="jour-item">
           <span class="icone" style="color:#8a8574;"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/></svg></span>
           <span><i>Note</i> - ${n.texte}</span>
         </div>
-      `).join('');
+        `});
+      });
 
-      const itemsHotels = HOTELS.filter(h => h.checkin === dateStr || h.checkout === dateStr).map(h => {
-        const estArrivee = h.checkin === dateStr;
-        return `
-        <div class="jour-item logistique">
-          <span class="icone" style="color:${stage ? stage.couleur : 'var(--fleuve)'};"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${LOGISTIQUE_ICONES.hotel}</svg></span>
-          <span><span class="heure">${estArrivee ? h.checkinHeure : h.checkoutHeure}</span>${estArrivee ? 'Arrivée' : 'Départ'} - ${h.nom}</span>
-        </div>
-        `;
-      }).join('');
-
-      const contenu = (itemsLogistique + itemsHotels + itemsDecouvertes + itemsTaches + itemsNotes) || '<div class="jour-vide">Rien de prévu pour l\'instant.</div>';
+      itemsJour.sort((a, b) => a.min - b.min);
+      const contenu = itemsJour.map(it => it.html).join('') || '<div class="jour-vide">Rien de prévu pour l\'instant.</div>';
 
       return `
         <div class="jour-row">
@@ -2129,7 +2154,7 @@
     const donnees = {
       titre,
       cat: catInput.value,
-      date: document.getElementById('f-date').value || new Date().toISOString().slice(0,10),
+      date: document.getElementById('f-date').value || dateLocaleISO(new Date()),
       heure: document.getElementById('f-heure').value,
       duree: parseInt(document.getElementById('f-duree').value, 10) || null,
       note: document.getElementById('f-note').value.trim(),
